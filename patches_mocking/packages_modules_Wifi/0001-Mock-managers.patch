@@ -1,0 +1,60 @@
+From 5e378aa8d15eca2546b5d063cdcd125aeec49cf3 Mon Sep 17 00:00:00 2001
+From: Lovely_xianxian <xyx_dada@outlook.com>
+Date: Mon, 1 Jan 2024 14:23:26 +0800
+Subject: [PATCH] Mock managers
+
+Change-Id: I3435725abd74f5fd492b193c316a4b0a441f7184
+---
+ framework/java/android/net/wifi/WifiManager.java | 15 +++++++++++++++
+ 1 file changed, 15 insertions(+)
+
+diff --git a/framework/java/android/net/wifi/WifiManager.java b/framework/java/android/net/wifi/WifiManager.java
+index e99b50fbb5..2e2a115937 100644
+--- a/framework/java/android/net/wifi/WifiManager.java
++++ b/framework/java/android/net/wifi/WifiManager.java
+@@ -39,6 +39,8 @@ import android.app.ActivityManager;
+ import android.app.admin.WifiSsidPolicy;
+ import android.compat.annotation.UnsupportedAppUsage;
+ import android.content.Context;
++import android.mocking.MockManager;
++import android.mocking.MockingList;
+ import android.net.ConnectivityManager;
+ import android.net.ConnectivityManager.NetworkCallback;
+ import android.net.DhcpInfo;
+@@ -3697,6 +3699,10 @@ public class WifiManager {
+     @Deprecated
+     @RequiresPermission(allOf = {ACCESS_WIFI_STATE, ACCESS_FINE_LOCATION}, conditional = true)
+     public WifiInfo getConnectionInfo() {
++        if (MockingList.shouldMock(mContext.getPackageName()) && mContext.getSystemService(MockManager.class).getLocationMocking().isMockingLocation()  && ((mContext.getSystemService(android.mocking.MockManager.class).getLocationMocking().getLocationMockingFlags() & (2 << 4)) == 0)) {
++            Log.d(TAG, "Location mocking enabled, blocking getConnectionInfo");
++            return null;
++        }
+         try {
+             return mService.getConnectionInfo(mContext.getOpPackageName(),
+                     mContext.getAttributionTag());
+@@ -3714,6 +3720,11 @@ public class WifiManager {
+      */
+     @RequiresPermission(allOf = {ACCESS_WIFI_STATE, ACCESS_FINE_LOCATION})
+     public List<ScanResult> getScanResults() {
++        if (MockingList.shouldMock(mContext.getPackageName()) && mContext.getSystemService(MockManager.class).getLocationMocking().isMockingLocation()  && ((mContext.getSystemService(android.mocking.MockManager.class).getLocationMocking().getLocationMockingFlags() & (2 << 4)) == 0)) {
++            Log.d(TAG, "Location mocking enabled, blocking getScanResults");
++            return new ArrayList<>();
++        }
++
+         try {
+             return mService.getScanResults(mContext.getOpPackageName(),
+                     mContext.getAttributionTag());
+@@ -4278,6 +4289,10 @@ public class WifiManager {
+      * @see #isWifiEnabled()
+      */
+     public int getWifiState() {
++        if (MockingList.shouldMock(mContext.getPackageName()) && mContext.getSystemService(MockManager.class).getLocationMocking().isMockingLocation() && ((mContext.getSystemService(android.mocking.MockManager.class).getLocationMocking().getLocationMockingFlags() & (2 << 4)) == 0)) {
++            Log.d(TAG, "Location mocking enabled, blocking getWifiState");
++            return WIFI_STATE_ENABLED;
++        }
+         try {
+             return mService.getWifiEnabledState();
+         } catch (RemoteException e) {
+-- 
+2.42.0
+

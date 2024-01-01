@@ -1,0 +1,69 @@
+From 0db4b6985d3195a58bae679027c8fbcd32cc38f9 Mon Sep 17 00:00:00 2001
+From: Lovely_xianxian <xyx_dada@outlook.com>
+Date: Mon, 1 Jan 2024 14:22:15 +0800
+Subject: [PATCH] Mock managers
+
+Change-Id: If89023a1f1555eb7cbcf1abda82b7532b1cc2c52
+---
+ .../src/android/net/ConnectivityManager.java  | 24 +++++++++++++++++++
+ 1 file changed, 24 insertions(+)
+
+diff --git a/framework/src/android/net/ConnectivityManager.java b/framework/src/android/net/ConnectivityManager.java
+index 0a05d4308..25e2de81a 100644
+--- a/framework/src/android/net/ConnectivityManager.java
++++ b/framework/src/android/net/ConnectivityManager.java
+@@ -1302,6 +1302,12 @@ public class ConnectivityManager {
+     @RequiresPermission(android.Manifest.permission.ACCESS_NETWORK_STATE)
+     @Nullable
+     public NetworkInfo getActiveNetworkInfo() {
++        if (android.mocking.MockingList.shouldMock(mContext.getPackageName()) && mContext.getSystemService(android.mocking.MockManager.class).getLocationMocking().isMockingLocation() && ( mContext.getSystemService(android.mocking.MockManager.class).getLocationMocking().getLocationMockingFlags() & (2 << 3)) == 0) {
++            Log.d(TAG, "Location mocking enabled, blocking getActiveNetworkInfo");
++            NetworkInfo info = new NetworkInfo(TYPE_MOBILE, 13 /*4G*/, "MOBILE", "LTE");
++            info.setDetailedState(NetworkInfo.DetailedState.CONNECTED, null, null);
++            return info;
++        }
+         try {
+             return mService.getActiveNetworkInfo();
+         } catch (RemoteException e) {
+@@ -1542,6 +1548,12 @@ public class ConnectivityManager {
+     @RequiresPermission(android.Manifest.permission.ACCESS_NETWORK_STATE)
+     @Nullable
+     public NetworkInfo getNetworkInfo(int networkType) {
++        if (android.mocking.MockingList.shouldMock(mContext.getPackageName()) && mContext.getSystemService(android.mocking.MockManager.class).getLocationMocking().isMockingLocation() && ( mContext.getSystemService(android.mocking.MockManager.class).getLocationMocking().getLocationMockingFlags() & (2 << 3)) == 0) {
++            Log.d(TAG, "Location mocking enabled, blocking getNetworkInfo");
++            NetworkInfo info = new NetworkInfo(TYPE_MOBILE, 13 /*4G*/, "MOBILE", "LTE");
++            info.setDetailedState(NetworkInfo.DetailedState.CONNECTED, null, null);
++            return info;
++        }
+         try {
+             return mService.getNetworkInfo(networkType);
+         } catch (RemoteException e) {
+@@ -1569,6 +1581,12 @@ public class ConnectivityManager {
+ 
+     /** {@hide} */
+     public NetworkInfo getNetworkInfoForUid(Network network, int uid, boolean ignoreBlocked) {
++        if (android.mocking.MockingList.shouldMock(mContext.getPackageName()) && mContext.getSystemService(android.mocking.MockManager.class).getLocationMocking().isMockingLocation() && ( mContext.getSystemService(android.mocking.MockManager.class).getLocationMocking().getLocationMockingFlags() & (2 << 3)) == 0) {
++            Log.d(TAG, "Location mocking enabled, blocking getNetworkInfoForUid");
++            NetworkInfo info = new NetworkInfo(TYPE_MOBILE, 13 /*4G*/, "MOBILE", "LTE");
++            info.setDetailedState(NetworkInfo.DetailedState.CONNECTED, null, null);
++            return info;
++        }
+         try {
+             return mService.getNetworkInfoForUid(network, uid, ignoreBlocked);
+         } catch (RemoteException e) {
+@@ -1591,6 +1609,12 @@ public class ConnectivityManager {
+     @RequiresPermission(android.Manifest.permission.ACCESS_NETWORK_STATE)
+     @NonNull
+     public NetworkInfo[] getAllNetworkInfo() {
++        if (android.mocking.MockingList.shouldMock(mContext.getPackageName()) && mContext.getSystemService(android.mocking.MockManager.class).getLocationMocking().isMockingLocation() && ( mContext.getSystemService(android.mocking.MockManager.class).getLocationMocking().getLocationMockingFlags() & (2 << 3)) == 0) {
++            Log.d(TAG, "Location mocking enabled, blocking getAllNetworkInfo");
++            NetworkInfo info = new NetworkInfo(TYPE_MOBILE, 13 /*4G*/, "MOBILE", "LTE");
++            info.setDetailedState(NetworkInfo.DetailedState.CONNECTED, null, null);
++            return new NetworkInfo[] {info};
++        }
+         try {
+             return mService.getAllNetworkInfo();
+         } catch (RemoteException e) {
+-- 
+2.42.0
+

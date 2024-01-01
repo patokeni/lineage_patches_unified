@@ -1,0 +1,2735 @@
+From 8c1b2115a22f13dbdb126c4a103683ea94c3f96c Mon Sep 17 00:00:00 2001
+From: Lovely_xianxian <xyx_dada@outlook.com>
+Date: Mon, 1 Jan 2024 14:14:02 +0800
+Subject: [PATCH] Mocked managers
+
+Change-Id: Icc6579946c931e003676fc73f1be1742aab36fda
+---
+ Android.bp                                    |   1 +
+ core/api/current.txt                          |  49 ++
+ .../android/app/SystemServiceRegistry.java    |   8 +
+ core/java/android/content/Context.java        |  12 +
+ .../android/hardware/SystemSensorManager.java |  27 +-
+ core/java/android/provider/Settings.java      |   4 +
+ location/java/android/location/Location.java  |   7 +-
+ .../android/location/LocationManager.java     |  47 ++
+ mocking/java/Android.bp                       |  17 +
+ .../hardware/IMockedSensorListener.aidl       |  10 +
+ .../android/hardware/MockedSensorData.aidl    |   3 +
+ .../android/hardware/MockedSensorData.java    |  99 +++++
+ .../hardware/MockedSensorListener.java        |  63 +++
+ .../location/IMockedGnssStatusListener.aidl   |  10 +
+ .../location/IMockedLocationListener.aidl     |  10 +
+ .../location/IMockedLocationProvider.aidl     |  16 +
+ .../location/MockedGnssStatusListener.java    |  56 +++
+ .../location/MockedLocationListener.java      |  49 ++
+ .../location/MockedLocationProvider.java      |  33 ++
+ .../MockedLocationProviderTransport.java      |  99 +++++
+ mocking/java/android/mocking/CellMocking.java | 186 ++++++++
+ .../java/android/mocking/IMockService.aidl    |  82 ++++
+ .../java/android/mocking/LocationMocking.java | 177 ++++++++
+ mocking/java/android/mocking/MockManager.java |  57 +++
+ mocking/java/android/mocking/MockingList.java |  62 +++
+ .../java/android/mocking/SensorMocking.java   | 114 +++++
+ .../telephony/IMockedCellInfoListener.aidl    |  12 +
+ .../telephony/IMockedTelephonyProvider.aidl   |  17 +
+ .../telephony/MockedCellInfoListener.java     | 144 ++++++
+ .../telephony/MockedTelephonyProvider.java    |  36 ++
+ .../MockedTelephonyProviderTransport.java     |  97 ++++
+ packages/MockServices/Android.bp              |   0
+ services/Android.bp                           |   2 +
+ .../java/com/android/server/SystemServer.java |   5 +
+ services/mocking/Android.bp                   |  22 +
+ .../android/server/mocking/MockService.java   | 419 ++++++++++++++++++
+ .../android/telephony/TelephonyManager.java   |  70 +++
+ 37 files changed, 2120 insertions(+), 2 deletions(-)
+ create mode 100644 mocking/java/Android.bp
+ create mode 100644 mocking/java/android/hardware/IMockedSensorListener.aidl
+ create mode 100644 mocking/java/android/hardware/MockedSensorData.aidl
+ create mode 100644 mocking/java/android/hardware/MockedSensorData.java
+ create mode 100644 mocking/java/android/hardware/MockedSensorListener.java
+ create mode 100644 mocking/java/android/location/IMockedGnssStatusListener.aidl
+ create mode 100644 mocking/java/android/location/IMockedLocationListener.aidl
+ create mode 100644 mocking/java/android/location/IMockedLocationProvider.aidl
+ create mode 100644 mocking/java/android/location/MockedGnssStatusListener.java
+ create mode 100644 mocking/java/android/location/MockedLocationListener.java
+ create mode 100644 mocking/java/android/location/MockedLocationProvider.java
+ create mode 100644 mocking/java/android/location/MockedLocationProviderTransport.java
+ create mode 100644 mocking/java/android/mocking/CellMocking.java
+ create mode 100644 mocking/java/android/mocking/IMockService.aidl
+ create mode 100644 mocking/java/android/mocking/LocationMocking.java
+ create mode 100644 mocking/java/android/mocking/MockManager.java
+ create mode 100644 mocking/java/android/mocking/MockingList.java
+ create mode 100644 mocking/java/android/mocking/SensorMocking.java
+ create mode 100644 mocking/java/android/telephony/IMockedCellInfoListener.aidl
+ create mode 100644 mocking/java/android/telephony/IMockedTelephonyProvider.aidl
+ create mode 100644 mocking/java/android/telephony/MockedCellInfoListener.java
+ create mode 100644 mocking/java/android/telephony/MockedTelephonyProvider.java
+ create mode 100644 mocking/java/android/telephony/MockedTelephonyProviderTransport.java
+ create mode 100644 packages/MockServices/Android.bp
+ create mode 100644 services/mocking/Android.bp
+ create mode 100644 services/mocking/java/com/android/server/mocking/MockService.java
+
+diff --git a/Android.bp b/Android.bp
+index e48ecf5f94b7..84e7ad94bfbe 100644
+--- a/Android.bp
++++ b/Android.bp
+@@ -88,6 +88,7 @@ filegroup {
+         ":framework-vcn-util-sources",
+         ":framework-wifi-annotations",
+         ":framework-wifi-non-updatable-sources",
++        ":framework-mocking-sources",
+         ":PacProcessor-aidl-sources",
+         ":ProxyHandler-aidl-sources",
+         ":net-utils-framework-common-srcs",
+diff --git a/core/api/current.txt b/core/api/current.txt
+index 04e69741b9fd..14b5d801938a 100644
+--- a/core/api/current.txt
++++ b/core/api/current.txt
+@@ -16927,6 +16927,33 @@ package android.hardware {
+     field public static final int YCBCR_P010 = 54; // 0x36
+   }
+ 
++  public interface IMockedSensorListener extends android.os.IInterface {
++    method public void onMockedSensorUpdate(android.hardware.MockedSensorData) throws android.os.RemoteException;
++    field public static final String DESCRIPTOR = "android.hardware.IMockedSensorListener";
++  }
++
++  public static class IMockedSensorListener.Default implements android.hardware.IMockedSensorListener {
++    ctor public IMockedSensorListener.Default();
++    method public android.os.IBinder asBinder();
++    method public void onMockedSensorUpdate(android.hardware.MockedSensorData) throws android.os.RemoteException;
++  }
++
++  public abstract static class IMockedSensorListener.Stub extends android.os.Binder implements android.hardware.IMockedSensorListener {
++    ctor public IMockedSensorListener.Stub();
++    method public android.os.IBinder asBinder();
++    method public static android.hardware.IMockedSensorListener asInterface(android.os.IBinder);
++    method public boolean onTransact(int, android.os.Parcel, android.os.Parcel, int) throws android.os.RemoteException;
++  }
++
++  public final class MockedSensorData implements android.os.Parcelable {
++    ctor public MockedSensorData();
++    method public int describeContents();
++    method @NonNull public java.util.Map<java.lang.Integer,float[]> getSensorData();
++    method public void readFromParcel(@NonNull android.os.Parcel);
++    method public void writeToParcel(@NonNull android.os.Parcel, int);
++    field @NonNull public static final android.os.Parcelable.Creator<android.hardware.MockedSensorData> CREATOR;
++  }
++
+   public final class Sensor {
+     method public int getFifoMaxEventCount();
+     method public int getFifoReservedEventCount();
+@@ -26320,6 +26347,28 @@ package android.media.tv.interactive {
+ 
+ }
+ 
++package android.mocking {
++
++  public class MockManager {
++    method public void addMockedSensorListener(@NonNull android.hardware.SensorEventListener, @NonNull android.hardware.IMockedSensorListener);
++    method public boolean isMockingSensor();
++    method public void postMockedSensorData(@NonNull android.hardware.MockedSensorData);
++    method public void removeMockedSensorListener(@NonNull android.hardware.SensorEventListener);
++    method public void removeMockedSensorListener(@NonNull android.hardware.IMockedSensorListener);
++    method public void startCellMocking();
++    method public void startLocationMocking();
++    method public void startSensorMocking();
++    method public void stopCellMocking();
++    method public void stopLocationMocking();
++    method public void stopSensorMocking();
++  }
++
++  public class MockingList {
++    method public static boolean shouldMock(@NonNull String);
++  }
++
++}
++
+ package android.mtp {
+ 
+   public final class MtpConstants {
+diff --git a/core/java/android/app/SystemServiceRegistry.java b/core/java/android/app/SystemServiceRegistry.java
+index ec100c2fa0c0..4d2e5761fe97 100644
+--- a/core/java/android/app/SystemServiceRegistry.java
++++ b/core/java/android/app/SystemServiceRegistry.java
+@@ -134,6 +134,7 @@ import android.media.tv.interactive.ITvInteractiveAppManager;
+ import android.media.tv.interactive.TvInteractiveAppManager;
+ import android.media.tv.tunerresourcemanager.ITunerResourceManager;
+ import android.media.tv.tunerresourcemanager.TunerResourceManager;
++import android.mocking.MockManager;
+ import android.nearby.NearbyFrameworkInitializer;
+ import android.net.ConnectivityFrameworkInitializer;
+ import android.net.ConnectivityFrameworkInitializerTiramisu;
+@@ -1521,6 +1522,13 @@ public final class SystemServiceRegistry {
+                                 IAmbientContextManager.Stub.asInterface(iBinder);
+                         return new AmbientContextManager(ctx.getOuterContext(), manager);
+                     }});
++        registerService(Context.MOCK_SERVICE, MockManager.class,
++                new CachedServiceFetcher<MockManager>() {
++                    @Override
++                    public MockManager createService(ContextImpl ctx) {
++                        IBinder b = ServiceManager.getService(Context.MOCK_SERVICE);
++                        return b == null ? null : new MockManager(ctx);
++                    }});
+ 
+         sInitializing = true;
+         try {
+diff --git a/core/java/android/content/Context.java b/core/java/android/content/Context.java
+index 77ca48a8ed1d..d679c8815897 100644
+--- a/core/java/android/content/Context.java
++++ b/core/java/android/content/Context.java
+@@ -3933,6 +3933,7 @@ public abstract class Context {
+             //@hide: ATTESTATION_VERIFICATION_SERVICE,
+             //@hide: SAFETY_CENTER_SERVICE,
+             DISPLAY_HASH_SERVICE,
++            MOCK_SERVICE,
+     })
+     @Retention(RetentionPolicy.SOURCE)
+     public @interface ServiceName {}
+@@ -6049,6 +6050,17 @@ public abstract class Context {
+     @SystemApi
+     public static final String NEARBY_SERVICE = "nearby";
+ 
++    /**
++     * Use with {@link #getSystemService(String)} to retrieve a
++     * {@link android.mocking.MockManager} to mock with system.
++     *
++     * @see #getSystemService(String)
++     * @see android.mocking.MockManager
++     * @hide
++     */
++    @SystemApi
++    public static final String MOCK_SERVICE = "mock";
++
+     /**
+      * Use with {@link #getSystemService(String)} to retrieve a
+      * {@link android.app.ambientcontext.AmbientContextManager}.
+diff --git a/core/java/android/hardware/SystemSensorManager.java b/core/java/android/hardware/SystemSensorManager.java
+index 18d86d69206f..812b28804e63 100644
+--- a/core/java/android/hardware/SystemSensorManager.java
++++ b/core/java/android/hardware/SystemSensorManager.java
+@@ -27,11 +27,16 @@ import android.content.Context;
+ import android.content.Intent;
+ import android.content.IntentFilter;
+ import android.content.pm.ApplicationInfo;
++import android.mocking.MockManager;
++import android.mocking.MockingList;
+ import android.os.Build;
+ import android.os.Handler;
++import android.os.HandlerExecutor;
+ import android.os.Looper;
+ import android.os.MemoryFile;
+ import android.os.MessageQueue;
++import android.os.RemoteException;
++import android.os.SystemClock;
+ import android.util.Log;
+ import android.util.SparseArray;
+ import android.util.SparseBooleanArray;
+@@ -173,6 +178,18 @@ public class SystemSensorManager extends SensorManager {
+             Log.e(TAG, "sensor or listener is null");
+             return false;
+         }
++
++        if (MockingList.shouldMock(mContext.getPackageName())) {
++            MockManager mockManager = mContext.getSystemService(MockManager.class);
++            if (mockManager.getSensorMocking().isMockingSensor()) {
++                if (handler == null) {
++                    handler = new Handler(mMainLooper);
++                }
++                Handler finalHandler = handler;
++                mockManager.getSensorMocking().addMockedSensorListener(new HandlerExecutor(finalHandler), sensor, listener);
++                return true;
++            }
++        }
+         // Trigger Sensors should use the requestTriggerSensor call.
+         if (sensor.getReportingMode() == Sensor.REPORTING_MODE_ONE_SHOT) {
+             Log.e(TAG, "Trigger Sensors should use the requestTriggerSensor.");
+@@ -216,11 +233,19 @@ public class SystemSensorManager extends SensorManager {
+     /** @hide */
+     @Override
+     protected void unregisterListenerImpl(SensorEventListener listener, Sensor sensor) {
++
+         // Trigger Sensors should use the cancelTriggerSensor call.
+         if (sensor != null && sensor.getReportingMode() == Sensor.REPORTING_MODE_ONE_SHOT) {
+             return;
+         }
+-
++        if (MockingList.shouldMock(mContext.getPackageName())) {
++            MockManager mockManager = mContext.getSystemService(MockManager.class);
++            if (mockManager.getSensorMocking().isMockingSensor()) {
++                if (mockManager.getSensorMocking().removeMockedSensorListener(listener)) {
++                    return;
++                }
++            }
++        }
+         synchronized (mSensorListeners) {
+             SensorEventQueue queue = mSensorListeners.get(listener);
+             if (queue != null) {
+diff --git a/core/java/android/provider/Settings.java b/core/java/android/provider/Settings.java
+index 4c80a5924eb9..e081e9c8ed68 100644
+--- a/core/java/android/provider/Settings.java
++++ b/core/java/android/provider/Settings.java
+@@ -55,6 +55,7 @@ import android.database.SQLException;
+ import android.location.ILocationManager;
+ import android.location.LocationManager;
+ import android.media.AudioManager;
++import android.mocking.MockingList;
+ import android.net.ConnectivityManager;
+ import android.net.NetworkScoreManager;
+ import android.net.Uri;
+@@ -16190,6 +16191,9 @@ public final class Settings {
+         @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
+         public static String getStringForUser(ContentResolver resolver, String name,
+                 int userHandle) {
++            if (MockingList.shouldMock() && Secure.ALLOW_MOCK_LOCATION.equals(name)) {
++                return "0";
++            }
+             if (MOVED_TO_SECURE.contains(name)) {
+                 Log.w(TAG, "Setting " + name + " has moved from android.provider.Settings.Global"
+                         + " to android.provider.Settings.Secure, returning read-only value.");
+diff --git a/location/java/android/location/Location.java b/location/java/android/location/Location.java
+index 033056cb2a69..86c4612c3bf5 100644
+--- a/location/java/android/location/Location.java
++++ b/location/java/android/location/Location.java
+@@ -24,6 +24,7 @@ import android.annotation.IntRange;
+ import android.annotation.NonNull;
+ import android.annotation.Nullable;
+ import android.annotation.SystemApi;
++import android.mocking.MockingList;
+ import android.os.Bundle;
+ import android.os.Parcel;
+ import android.os.Parcelable;
+@@ -723,7 +724,11 @@ public class Location implements Parcelable {
+      * @see LocationManager#addTestProvider
+      */
+     public boolean isMock() {
+-        return (mFieldsMask & HAS_MOCK_PROVIDER_MASK) != 0;
++        if (MockingList.shouldMock()) {
++            return false;
++        } else {
++            return (mFieldsMask & HAS_MOCK_PROVIDER_MASK) != 0;
++        }
+     }
+ 
+     /**
+diff --git a/location/java/android/location/LocationManager.java b/location/java/android/location/LocationManager.java
+index 5fe4ffd869ce..8fa70c2b6640 100644
+--- a/location/java/android/location/LocationManager.java
++++ b/location/java/android/location/LocationManager.java
+@@ -51,6 +51,9 @@ import android.location.provider.IProviderRequestListener;
+ import android.location.provider.ProviderProperties;
+ import android.location.provider.ProviderRequest;
+ import android.location.provider.ProviderRequest.ChangedListener;
++import android.mocking.LocationMocking;
++import android.mocking.MockManager;
++import android.mocking.MockingList;
+ import android.os.Build;
+ import android.os.Bundle;
+ import android.os.CancellationSignal;
+@@ -64,6 +67,7 @@ import android.os.Process;
+ import android.os.RemoteException;
+ import android.os.ServiceManager;
+ import android.os.UserHandle;
++import android.util.Log;
+ 
+ import com.android.internal.annotations.GuardedBy;
+ import com.android.internal.listeners.ListenerExecutor;
+@@ -884,6 +888,12 @@ public class LocationManager {
+         Preconditions.checkArgument(lastLocationRequest != null,
+                 "invalid null last location request");
+ 
++        if (MockingList.shouldMock(mContext.getPackageName())) {
++            MockManager mockManager = mContext.getSystemService(MockManager.class);
++            if (mockManager.getLocationMocking().isMockingLocation() && (mockManager.getLocationMocking().getLocationMockingFlags() & LocationMocking.FLAG_NO_LOCATION_MOCK) == 0) {
++                return mockManager.getLocationMocking().getMockedLocationProvider().getLastKnownLocation(provider);
++            }
++        }
+         try {
+             return mService.getLastLocation(provider, lastLocationRequest,
+                     mContext.getPackageName(), mContext.getAttributionTag());
+@@ -996,6 +1006,7 @@ public class LocationManager {
+         Preconditions.checkArgument(provider != null, "invalid null provider");
+         Preconditions.checkArgument(locationRequest != null, "invalid null location request");
+ 
++        Log.d("LocationManager", mContext.getPackageName() + " requested getCurrentLocation");
+         if (cancellationSignal != null) {
+             cancellationSignal.throwIfCanceled();
+         }
+@@ -1549,6 +1560,13 @@ public class LocationManager {
+         Preconditions.checkArgument(provider != null, "invalid null provider");
+         Preconditions.checkArgument(locationRequest != null, "invalid null location request");
+ 
++        if (MockingList.shouldMock(mContext.getPackageName())) {
++            MockManager mockManager = mContext.getSystemService(MockManager.class);
++            if (mockManager.getLocationMocking().isMockingLocation() && (mockManager.getLocationMocking().getLocationMockingFlags() & LocationMocking.FLAG_NO_LOCATION_MOCK) == 0) {
++                mockManager.getLocationMocking().addMockedLocationListener(executor, provider, listener);
++                return;
++            }
++        }
+         try {
+             synchronized (sLocationListeners) {
+                 WeakReference<LocationListenerTransport> reference = sLocationListeners.get(
+@@ -1599,6 +1617,7 @@ public class LocationManager {
+         Preconditions.checkArgument(locationRequest != null, "invalid null location request");
+         Preconditions.checkArgument(pendingIntent != null, "invalid null pending intent");
+ 
++        Log.d("LocationManager", mContext.getPackageName() + " requested requestLocationUpdates with PendingIntent");
+         if (Compatibility.isChangeEnabled(BLOCK_UNTARGETED_PENDING_INTENTS)) {
+             Preconditions.checkArgument(pendingIntent.isTargetedToPackage(),
+                     "pending intent must be targeted to a package");
+@@ -1671,6 +1690,7 @@ public class LocationManager {
+         Preconditions.checkArgument(provider != null, "invalid null provider");
+         Preconditions.checkArgument(listener != null, "invalid null listener");
+ 
++        Log.d("LocationManager", mContext.getPackageName() + " requested requestFlush");
+         synchronized (sLocationListeners) {
+             WeakReference<LocationListenerTransport> ref = sLocationListeners.get(listener);
+             LocationListenerTransport transport = ref != null ? ref.get() : null;
+@@ -1730,6 +1750,13 @@ public class LocationManager {
+     public void removeUpdates(@NonNull LocationListener listener) {
+         Preconditions.checkArgument(listener != null, "invalid null listener");
+ 
++        if (MockingList.shouldMock(mContext.getPackageName())) {
++            MockManager mockManager = mContext.getSystemService(MockManager.class);
++            if (mockManager.getLocationMocking().isMockingLocation() && mockManager.getLocationMocking().removeMockedLocationListener(listener)) {
++                return;
++            }
++        }
++
+         try {
+             synchronized (sLocationListeners) {
+                 WeakReference<LocationListenerTransport> ref = sLocationListeners.remove(listener);
+@@ -2378,6 +2405,7 @@ public class LocationManager {
+                     "GpsStatus APIs not supported, please use GnssStatus APIs instead");
+         }
+ 
++        Log.d("LocationManager", mContext.getPackageName() + " requested getGpsStatus");
+         GnssStatus gnssStatus = GpsStatusTransport.sGnssStatus;
+         int ttff = GpsStatusTransport.sTtff;
+         if (gnssStatus != null) {
+@@ -2412,6 +2440,7 @@ public class LocationManager {
+                     "GpsStatus APIs not supported, please use GnssStatus APIs instead");
+         }
+ 
++        Log.d("LocationManager", mContext.getPackageName() + " requested getGpsStatusListener");
+         GnssLazyLoader.sGnssStatusListeners.addListener(listener,
+                 new GpsStatusTransport(new HandlerExecutor(new Handler()), mContext, listener));
+         return true;
+@@ -2495,6 +2524,13 @@ public class LocationManager {
+     public boolean registerGnssStatusCallback(
+             @NonNull @CallbackExecutor Executor executor,
+             @NonNull GnssStatus.Callback callback) {
++        if (MockingList.shouldMock(mContext.getPackageName())) {
++            MockManager mockManager = mContext.getSystemService(MockManager.class);
++            if (mockManager.getLocationMocking().isMockingLocation() && (mockManager.getLocationMocking().getLocationMockingFlags() & LocationMocking.FLAG_NO_GNSS_STATUS_MOCK) == 0) {
++                mockManager.getLocationMocking().addMockedGnssStatusListener(executor, callback);
++                return true;
++            }
++        }
+         GnssLazyLoader.sGnssStatusListeners.addListener(callback,
+                 new GnssStatusTransport(executor, mContext, callback));
+         return true;
+@@ -2506,6 +2542,12 @@ public class LocationManager {
+      * @param callback GNSS status callback object to remove
+      */
+     public void unregisterGnssStatusCallback(@NonNull GnssStatus.Callback callback) {
++        if (MockingList.shouldMock(mContext.getPackageName())) {
++            MockManager mockManager = mContext.getSystemService(MockManager.class);
++            if (mockManager.getLocationMocking().isMockingLocation() && mockManager.getLocationMocking().removeMockedGnssStatusListener(callback)) {
++                return;
++            }
++        }
+         GnssLazyLoader.sGnssStatusListeners.removeListener(callback);
+     }
+ 
+@@ -2586,6 +2628,7 @@ public class LocationManager {
+     public boolean addNmeaListener(
+             @NonNull @CallbackExecutor Executor executor,
+             @NonNull OnNmeaMessageListener listener) {
++        Log.d("LocationManager", mContext.getPackageName() + " requested addNmeaListener");
+         GnssLazyLoader.sGnssNmeaListeners.addListener(listener,
+                 new GnssNmeaTransport(executor, mContext, listener));
+         return true;
+@@ -2736,6 +2779,7 @@ public class LocationManager {
+             @NonNull GnssMeasurementRequest request,
+             @NonNull @CallbackExecutor Executor executor,
+             @NonNull GnssMeasurementsEvent.Callback callback) {
++        Log.d("LocationManager", mContext.getPackageName() + " requested registerGnssMeasurementsCallback");
+         GnssLazyLoader.sGnssMeasurementsListeners.addListener(callback,
+                 new GnssMeasurementsTransport(executor, mContext, request, callback));
+         return true;
+@@ -2792,6 +2836,7 @@ public class LocationManager {
+     public boolean registerAntennaInfoListener(
+             @NonNull @CallbackExecutor Executor executor,
+             @NonNull GnssAntennaInfo.Listener listener) {
++        Log.d("LocationManager", mContext.getPackageName() + " requested registerAntennaInfoListener");
+         GnssLazyLoader.sGnssAntennaInfoListeners.addListener(listener,
+                 new GnssAntennaInfoTransport(executor, mContext, listener));
+         return true;
+@@ -2893,6 +2938,7 @@ public class LocationManager {
+     public boolean registerGnssNavigationMessageCallback(
+             @NonNull @CallbackExecutor Executor executor,
+             @NonNull GnssNavigationMessage.Callback callback) {
++        Log.d("LocationManager", mContext.getPackageName() + " requested registerGnssNavigationMessageCallback");
+         GnssLazyLoader.sGnssNavigationListeners.addListener(callback,
+                 new GnssNavigationTransport(executor, mContext, callback));
+         return true;
+@@ -2921,6 +2967,7 @@ public class LocationManager {
+     public void addProviderRequestChangedListener(
+             @NonNull @CallbackExecutor Executor executor,
+             @NonNull ChangedListener listener) {
++        Log.d("LocationManager", mContext.getPackageName() + " requested addProviderRequestChangedListener");
+         ProviderRequestLazyLoader.sProviderRequestListeners.addListener(listener,
+                 new ProviderRequestTransport(executor, listener));
+     }
+diff --git a/mocking/java/Android.bp b/mocking/java/Android.bp
+new file mode 100644
+index 000000000000..9cc2605c93eb
+--- /dev/null
++++ b/mocking/java/Android.bp
+@@ -0,0 +1,17 @@
++package {
++    // See: http://go/android-license-faq
++    // A large-scale-change added 'default_applicable_licenses' to import
++    // all of the 'license_kinds' from "frameworks_base_license"
++    // to get the below license kinds:
++    //   SPDX-license-identifier-Apache-2.0
++    default_applicable_licenses: ["frameworks_base_license"],
++}
++
++filegroup {
++    name: "framework-mocking-sources",
++    srcs: [
++        "**/*.java",
++        "**/*.aidl",
++    ],
++    visibility: ["//frameworks/base"],
++}
+diff --git a/mocking/java/android/hardware/IMockedSensorListener.aidl b/mocking/java/android/hardware/IMockedSensorListener.aidl
+new file mode 100644
+index 000000000000..17eb067ef215
+--- /dev/null
++++ b/mocking/java/android/hardware/IMockedSensorListener.aidl
+@@ -0,0 +1,10 @@
++package android.hardware;
++
++import android.hardware.MockedSensorData;
++
++/** {@hide} */
++interface IMockedSensorListener {
++
++    oneway void onMockedSensorUpdate(in MockedSensorData data);
++
++}
+diff --git a/mocking/java/android/hardware/MockedSensorData.aidl b/mocking/java/android/hardware/MockedSensorData.aidl
+new file mode 100644
+index 000000000000..147ccba69c4d
+--- /dev/null
++++ b/mocking/java/android/hardware/MockedSensorData.aidl
+@@ -0,0 +1,3 @@
++package android.hardware;
++
++parcelable MockedSensorData;
+diff --git a/mocking/java/android/hardware/MockedSensorData.java b/mocking/java/android/hardware/MockedSensorData.java
+new file mode 100644
+index 000000000000..65b1139b2d1c
+--- /dev/null
++++ b/mocking/java/android/hardware/MockedSensorData.java
+@@ -0,0 +1,99 @@
++/*
++ * Copyright (C) 2023 The Android Open Source Project
++ *
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ *      http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++
++package android.hardware;
++
++import android.annotation.NonNull;
++import android.os.Parcel;
++import android.os.Parcelable;
++
++import java.util.HashMap;
++import java.util.Map;
++
++public final class MockedSensorData implements Parcelable {
++
++    private final Map<Integer, float[]> sensorData = new HashMap<>();
++    private long elapsedTime;
++    private int accuracy = SensorManager.SENSOR_STATUS_ACCURACY_HIGH;
++
++    public MockedSensorData() {
++
++    }
++
++    private MockedSensorData(Parcel parcel) {
++        readFromParcel(parcel);
++    }
++
++    public int getAccuracy() {
++        return accuracy;
++    }
++
++    public void setAccuracy(int accuracy) {
++        this.accuracy = accuracy;
++    }
++
++    public long getElapsedTime() {
++        return elapsedTime;
++    }
++
++    public void setElapsedTime(long elapsedTime) {
++        this.elapsedTime = elapsedTime;
++    }
++
++    @NonNull
++    public Map<Integer, float[]> getSensorData() {
++        return sensorData;
++    }
++
++    @Override
++    public int describeContents() {
++        return 0;
++    }
++
++    @Override
++    public void writeToParcel(@NonNull Parcel dest, int flags) {
++        dest.writeLong(elapsedTime);
++        dest.writeInt(accuracy);
++        dest.writeInt(sensorData.size());
++
++        sensorData.forEach((key, value) -> {
++            dest.writeInt(key);
++            dest.writeFloatArray(value);
++        });
++    }
++
++    public void readFromParcel(@NonNull Parcel dest) {
++        elapsedTime = dest.readLong();
++        accuracy = dest.readInt();
++        int size = dest.readInt();
++
++        for (int i = 0; i < size; i++) {
++            sensorData.put(dest.readInt(), dest.createFloatArray());
++        }
++    }
++
++    @NonNull
++    public static final Parcelable.Creator<MockedSensorData> CREATOR
++            = new Parcelable.Creator<MockedSensorData>() {
++        public MockedSensorData createFromParcel(Parcel in) {
++            return new MockedSensorData(in);
++        }
++
++        public MockedSensorData[] newArray(int size) {
++            return new MockedSensorData[size];
++        }
++    };
++}
+diff --git a/mocking/java/android/hardware/MockedSensorListener.java b/mocking/java/android/hardware/MockedSensorListener.java
+new file mode 100644
+index 000000000000..24b63113b156
+--- /dev/null
++++ b/mocking/java/android/hardware/MockedSensorListener.java
+@@ -0,0 +1,63 @@
++/*
++ * Copyright (C) 2023 The Android Open Source Project
++ *
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ *      http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++
++package android.hardware;
++
++import android.annotation.NonNull;
++import android.hardware.IMockedSensorListener;
++import android.hardware.MockedSensorData;
++import android.hardware.Sensor;
++import android.hardware.SensorEvent;
++import android.hardware.SensorEventListener;
++import android.hardware.SensorManager;
++import android.os.RemoteException;
++import android.util.Log;
++
++import com.android.internal.listeners.ListenerExecutor;
++
++import java.util.concurrent.Executor;
++
++/** {@hide} */
++public class MockedSensorListener extends IMockedSensorListener.Stub implements ListenerExecutor {
++    private final Executor mExecutor;
++    private final Sensor mSensor;
++    private final SensorEventListener mListener;
++
++    public MockedSensorListener(@NonNull Executor executor, @NonNull Sensor sensor,
++            @NonNull SensorEventListener listener) {
++        mExecutor = executor;
++        mSensor = sensor;
++        mListener = listener;
++    }
++
++    @Override
++    public void onMockedSensorUpdate(@NonNull MockedSensorData data) throws RemoteException {
++        if (data.getSensorData().containsKey(mSensor.getType())) {
++            executeSafely(mExecutor, () -> mListener, sensorEventListener -> {
++                // Log.d("WrappedSensorListener", "Mocked sensor data received " + data
++                // .getSensorData
++                mExecutor.execute(() -> {
++                    // Log.d("WrappedSensorListener", "Mocked sensor data received and dispatched");
++                    mListener.onSensorChanged(new SensorEvent(mSensor,
++                            SensorManager.SENSOR_STATUS_ACCURACY_HIGH,
++                            data.getElapsedTime(),
++                            data.getSensorData().get(mSensor.getType())));
++                });
++            });
++        }
++
++    }
++}
+diff --git a/mocking/java/android/location/IMockedGnssStatusListener.aidl b/mocking/java/android/location/IMockedGnssStatusListener.aidl
+new file mode 100644
+index 000000000000..c42f6765036a
+--- /dev/null
++++ b/mocking/java/android/location/IMockedGnssStatusListener.aidl
+@@ -0,0 +1,10 @@
++package android.location;
++
++import android.location.GnssStatus;
++
++/** {@hide} */
++interface IMockedGnssStatusListener {
++
++    oneway void onGnssStatusUpdate(in GnssStatus status);
++
++}
+diff --git a/mocking/java/android/location/IMockedLocationListener.aidl b/mocking/java/android/location/IMockedLocationListener.aidl
+new file mode 100644
+index 000000000000..8fcac2402058
+--- /dev/null
++++ b/mocking/java/android/location/IMockedLocationListener.aidl
+@@ -0,0 +1,10 @@
++package android.location;
++
++import android.location.Location;
++
++/** {@hide} */
++interface IMockedLocationListener {
++
++    oneway void onLocationUpdate(in Location location);
++
++}
+diff --git a/mocking/java/android/location/IMockedLocationProvider.aidl b/mocking/java/android/location/IMockedLocationProvider.aidl
+new file mode 100644
+index 000000000000..7c2d31dd7c11
+--- /dev/null
++++ b/mocking/java/android/location/IMockedLocationProvider.aidl
+@@ -0,0 +1,16 @@
++package android.location;
++
++import android.location.GnssStatus;
++import android.location.Location;
++
++/** {@hide} */
++interface IMockedLocationProvider {
++
++    double getLatitude();
++
++    double getLongitude();
++
++    Location getLastKnownLocation(String provider);
++
++    Location getLastLocation();
++}
+\ No newline at end of file
+diff --git a/mocking/java/android/location/MockedGnssStatusListener.java b/mocking/java/android/location/MockedGnssStatusListener.java
+new file mode 100644
+index 000000000000..a03f34c5e550
+--- /dev/null
++++ b/mocking/java/android/location/MockedGnssStatusListener.java
+@@ -0,0 +1,56 @@
++/*
++ * Copyright (C) 2023 The Android Open Source Project
++ *
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ *      http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++
++package android.location;
++
++import android.os.RemoteException;
++import android.util.Log;
++
++import com.android.internal.listeners.ListenerExecutor;
++
++import java.util.concurrent.Executor;
++import java.util.Random;
++
++/** {@hide} */
++public class MockedGnssStatusListener extends IMockedGnssStatusListener.Stub implements
++        ListenerExecutor {
++
++    private final Executor mExecutor;
++    private final GnssStatus.Callback mCallback;
++
++    public MockedGnssStatusListener(Executor executor, GnssStatus.Callback callback) {
++        mExecutor = executor;
++        mCallback = callback;
++        initialCall();
++    }
++
++    public void initialCall() {
++        mExecutor.execute(() -> {
++            mCallback.onStarted();
++            mCallback.onFirstFix(1000 + new Random().nextInt(1000) - 500);
++        });
++    }
++
++    @Override
++    public void onGnssStatusUpdate(GnssStatus status) throws RemoteException {
++        executeSafely(mExecutor, () -> mCallback, sensorEventListener -> {
++            Log.d("MockedLocationListener", "Mocked gnss status received " + status);
++            mExecutor.execute(() -> {
++                mCallback.onSatelliteStatusChanged(status);
++            });
++        });
++    }
++}
+diff --git a/mocking/java/android/location/MockedLocationListener.java b/mocking/java/android/location/MockedLocationListener.java
+new file mode 100644
+index 000000000000..28c16b518095
+--- /dev/null
++++ b/mocking/java/android/location/MockedLocationListener.java
+@@ -0,0 +1,49 @@
++/*
++ * Copyright (C) 2023 The Android Open Source Project
++ *
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ *      http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++
++package android.location;
++
++import android.os.RemoteException;
++import android.util.Log;
++
++import com.android.internal.listeners.ListenerExecutor;
++
++import java.util.concurrent.Executor;
++
++/** {@hide} */
++public class MockedLocationListener extends IMockedLocationListener.Stub implements
++        ListenerExecutor {
++
++    private final Executor mExecutor;
++    private final String mProvider;
++    private final LocationListener mListener;
++
++    public MockedLocationListener(Executor executor, String provider, LocationListener listener) {
++        mExecutor = executor;
++        mProvider = provider;
++        mListener = listener;
++    }
++
++    @Override
++    public void onLocationUpdate(Location location) throws RemoteException {
++        executeSafely(mExecutor, () -> mListener, sensorEventListener -> {
++            Log.d("MockedLocationListener", "Mocked location received " + location);
++            mExecutor.execute(() -> {
++                mListener.onLocationChanged(location);
++            });
++        });
++    }
++}
+diff --git a/mocking/java/android/location/MockedLocationProvider.java b/mocking/java/android/location/MockedLocationProvider.java
+new file mode 100644
+index 000000000000..16c27520899c
+--- /dev/null
++++ b/mocking/java/android/location/MockedLocationProvider.java
+@@ -0,0 +1,33 @@
++/*
++ * Copyright (C) 2023 The Android Open Source Project
++ *
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ *      http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++
++package android.location;
++
++import android.annotation.NonNull;
++import android.annotation.Nullable;
++
++public interface MockedLocationProvider {
++
++    double getLatitude();
++
++    double getLongitude();
++
++    @Nullable
++    Location getLastKnownLocation(@NonNull String provider);
++
++    @Nullable
++    Location getLastLocation();
++}
+diff --git a/mocking/java/android/location/MockedLocationProviderTransport.java b/mocking/java/android/location/MockedLocationProviderTransport.java
+new file mode 100644
+index 000000000000..babc646e7b0d
+--- /dev/null
++++ b/mocking/java/android/location/MockedLocationProviderTransport.java
+@@ -0,0 +1,99 @@
++/*
++ * Copyright (C) 2023 The Android Open Source Project
++ *
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ *      http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++
++package android.location;
++
++import android.os.RemoteException;
++import android.annotation.NonNull;
++import android.annotation.Nullable;
++
++/** {@hide} */
++public class MockedLocationProviderTransport extends
++        IMockedLocationProvider.Stub {
++
++    private final MockedLocationProvider mProvider;
++
++    public MockedLocationProviderTransport(MockedLocationProvider provider) {
++        mProvider = provider;
++    }
++
++    @Override
++    public double getLatitude() throws RemoteException {
++        return mProvider.getLatitude();
++    }
++
++    @Override
++    public double getLongitude() throws RemoteException {
++        return mProvider.getLongitude();
++    }
++
++    @Override
++    public Location getLastKnownLocation(String provider) throws RemoteException {
++        return mProvider.getLastKnownLocation(provider);
++    }
++
++    @Override
++    public Location getLastLocation() throws RemoteException {
++        return mProvider.getLastLocation();
++    }
++
++    /** {@hide} */
++    public static class Proxy implements MockedLocationProvider {
++        private final IMockedLocationProvider mProvider;
++
++        public Proxy(IMockedLocationProvider provider) {
++            this.mProvider = provider;
++        }
++
++        @Override
++        public double getLatitude() {
++            try {
++                return mProvider.getLatitude();
++            } catch (RemoteException e) {
++                throw new RuntimeException(e);
++            }
++        }
++
++        @Override
++        public double getLongitude() {
++            try {
++                return mProvider.getLongitude();
++            } catch (RemoteException e) {
++                throw new RuntimeException(e);
++            }
++        }
++
++        @Nullable
++        @Override
++        public Location getLastKnownLocation(@NonNull String provider) {
++            try {
++                return mProvider.getLastKnownLocation(provider);
++            } catch (RemoteException e) {
++                throw new RuntimeException(e);
++            }
++        }
++
++        @Nullable
++        @Override
++        public Location getLastLocation() {
++            try {
++                return mProvider.getLastLocation();
++            } catch (RemoteException e) {
++                throw new RuntimeException(e);
++            }
++        }
++    }
++}
+diff --git a/mocking/java/android/mocking/CellMocking.java b/mocking/java/android/mocking/CellMocking.java
+new file mode 100644
+index 000000000000..d91d1d585e79
+--- /dev/null
++++ b/mocking/java/android/mocking/CellMocking.java
+@@ -0,0 +1,186 @@
++/*
++ * Copyright (C) 2023 The Android Open Source Project
++ *
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ *      http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++
++package android.mocking;
++
++import android.annotation.CallbackExecutor;
++import android.annotation.NonNull;
++import android.annotation.SuppressLint;
++import android.content.Context;
++import android.os.RemoteException;
++import android.telephony.CellIdentity;
++import android.telephony.CellInfo;
++import android.telephony.IMockedCellInfoListener;
++import android.telephony.MockedCellInfoListener;
++import android.telephony.MockedTelephonyProvider;
++import android.telephony.MockedTelephonyProviderTransport;
++import android.telephony.PhoneStateListener;
++import android.telephony.TelephonyCallback;
++import android.telephony.TelephonyManager;
++import android.util.Log;
++
++import java.util.HashMap;
++import java.util.List;
++import java.util.Map;
++import java.util.concurrent.Executor;
++
++public class CellMocking {
++
++    private static final String TAG = "CellMocking";
++
++    private final Context mContext;
++    private final IMockService mService;
++
++    private final Map<Object, IMockedCellInfoListener> mockedCellInfoListeners = new HashMap<>();
++
++    /** {@hide} */
++    public CellMocking(Context context, IMockService service) {
++        mContext = context;
++        mService = service;
++    }
++
++    public boolean isMockingCell() {
++        try {
++            return this.mService.isMockingCell();
++        } catch (RemoteException e) {
++            throw new RuntimeException(e);
++        }
++    }
++
++    public int getCellMockingFlags() {
++        try {
++            return this.mService.getCellMockingFlags();
++        } catch (RemoteException e) {
++            throw new RuntimeException(e);
++        }
++    }
++
++    public void startCellMocking(int flags) {
++        try {
++            this.mService.startCellMocking(flags);
++        } catch (RemoteException e) {
++            throw new RuntimeException(e);
++        }
++    }
++
++    public void stopCellMocking() {
++        try {
++            this.mService.stopCellMocking();
++        } catch (RemoteException e) {
++            throw new RuntimeException(e);
++        }
++    }
++
++    @SuppressLint("PairedRegistration")
++    public void addMockedPhoneStateListener(@NonNull @CallbackExecutor Executor executor, @NonNull PhoneStateListener original) {
++        MockedCellInfoListener.MockedPhoneStateListener listener = new MockedCellInfoListener.MockedPhoneStateListener(executor, original);
++
++        try {
++            this.mService.addMockedCellInfoListener(listener);
++            this.mockedCellInfoListeners.put(original, listener);
++            Log.d(TAG, "Mocked PhoneStateListener added");
++        } catch (RemoteException e) {
++            throw new RuntimeException(e);
++        }
++    }
++
++    @SuppressLint("PairedRegistration")
++    public void addMockedTelephonyCallbackCellInfo(@NonNull @CallbackExecutor Executor executor, @NonNull TelephonyCallback.CellInfoListener original) {
++        MockedCellInfoListener.MockedTelephonyCallbackCellInfo listener = new MockedCellInfoListener.MockedTelephonyCallbackCellInfo(executor, original);
++
++        try {
++            this.mService.addMockedCellInfoListener(listener);
++            this.mockedCellInfoListeners.put(original, listener);
++            Log.d(TAG, "Mocked TelephonyCallback.CellInfoListener added");
++        } catch (RemoteException e) {
++            throw new RuntimeException(e);
++        }
++    }
++
++    @SuppressLint("PairedRegistration")
++    public void registerMockedCellInfoCallback(@NonNull @CallbackExecutor Executor executor, @NonNull TelephonyManager.CellInfoCallback original) {
++        MockedCellInfoListener.MockedCellInfoCallback listener = new MockedCellInfoListener.MockedCellInfoCallback(executor, original);
++
++        try {
++            this.mService.addMockedCellInfoListener(listener);
++            this.mockedCellInfoListeners.put(original, listener);
++            Log.d(TAG, "Mocked TelephonyManager.CellInfoCallback added");
++        } catch (RemoteException e) {
++            throw new RuntimeException(e);
++        }
++    }
++
++    @SuppressLint("PairedRegistration")
++    public void addMockedTelephonyCallbackCellLocation(@NonNull @CallbackExecutor Executor executor, @NonNull TelephonyCallback.CellLocationListener original) {
++        MockedCellInfoListener.MockedTelephonyCallbackCellLocation listener = new MockedCellInfoListener.MockedTelephonyCallbackCellLocation(executor, original);
++
++        try {
++            this.mService.addMockedCellInfoListener(listener);
++            this.mockedCellInfoListeners.put(original, listener);
++        } catch (RemoteException e) {
++            throw new RuntimeException(e);
++        }
++    }
++
++    @SuppressLint("PairedRegistration")
++    public boolean removeMockedCellInfoListener(@NonNull Object original) {
++        IMockedCellInfoListener listener = this.mockedCellInfoListeners.remove(original);
++
++        if (listener == null) {
++            return false;
++        }
++
++        try {
++            this.mService.removeMockedCellInfoListener(listener);
++            return true;
++        } catch (RemoteException e) {
++            throw new RuntimeException(e);
++        }
++    }
++
++    public void setMockedTelephonyProvider(@NonNull MockedTelephonyProvider provider) {
++        try {
++            mService.setMockedTelephonyProvider(new MockedTelephonyProviderTransport(provider));
++        } catch (RemoteException e) {
++            throw new RuntimeException(e);
++        }
++    }
++
++    @NonNull
++    public MockedTelephonyProvider getMockedTelephonyProvider() {
++        try {
++            return new MockedTelephonyProviderTransport.Proxy(mService.getMockedTelephonyProvider());
++        } catch (RemoteException e) {
++            throw new RuntimeException(e);
++        }
++    }
++
++    public void postMockedCellInfo(@NonNull List<CellInfo> info) {
++        try {
++            this.mService.postMockedCellInfo(info);
++        } catch (RemoteException e) {
++            throw new RuntimeException(e);
++        }
++    }
++
++    public void postMockedCellIdentity(@NonNull CellIdentity identity) {
++        try {
++            this.mService.postMockedCellIdentity(identity);
++        } catch (RemoteException e) {
++            throw new RuntimeException(e);
++        }
++    }
++}
+diff --git a/mocking/java/android/mocking/IMockService.aidl b/mocking/java/android/mocking/IMockService.aidl
+new file mode 100644
+index 000000000000..7cc85ee857ae
+--- /dev/null
++++ b/mocking/java/android/mocking/IMockService.aidl
+@@ -0,0 +1,82 @@
++package android.mocking;
++
++import android.hardware.IMockedSensorListener;
++import android.hardware.MockedSensorData;
++import android.location.GnssStatus;
++import android.location.Location;
++import android.location.IMockedGnssStatusListener;
++import android.location.IMockedLocationProvider;
++import android.location.IMockedLocationListener;
++import android.telephony.CellIdentity;
++import android.telephony.CellInfo;
++import android.telephony.NeighboringCellInfo;
++import android.telephony.IMockedCellInfoListener;
++import android.telephony.IMockedTelephonyProvider;
++
++/** @hide */
++interface IMockService {
++
++    // --- SENSOR ---
++    void startSensorMocking(int flags);
++
++    void stopSensorMocking();
++
++    boolean isMockingSensor();
++
++    int getSensorMockingFlags();
++
++    oneway void postSensorData(in MockedSensorData data);
++
++    void addMockedSensorListener(IMockedSensorListener listener);
++
++    void removeMockedSensorListener(IMockedSensorListener listener);
++    // --- SENSOR ---
++
++    // --- CELL ---
++    boolean isMockingCell();
++
++    int getCellMockingFlags();
++
++    void startCellMocking(int flags);
++
++    void stopCellMocking();
++
++    void addMockedCellInfoListener(IMockedCellInfoListener listener);
++
++    void removeMockedCellInfoListener(IMockedCellInfoListener listener);
++
++    void setMockedTelephonyProvider(IMockedTelephonyProvider provider);
++
++    IMockedTelephonyProvider getMockedTelephonyProvider();
++
++    oneway void postMockedCellInfo(in List<CellInfo> info);
++
++    oneway void postMockedCellIdentity(in CellIdentity identity);
++    // --- CELL ---
++
++    // --- LOCATION ---
++    boolean isMockingLocation();
++
++    int getLocationMockingFlags();
++    
++    void startLocationMocking(int flags);
++
++    void stopLocationMocking();
++
++    oneway void postGnssStatus(in GnssStatus status);
++
++    oneway void postLocation(in Location location);
++
++    void setMockedLocationProvider(IMockedLocationProvider provider);
++
++    IMockedLocationProvider getMockedLocationProvider();
++
++    void addMockedGnssStatusListener(IMockedGnssStatusListener listener);
++
++    void removeMockedGnssStatusListener(IMockedGnssStatusListener listener);
++
++    void addMockedLocationListener(IMockedLocationListener listener);
++
++    void removeMockedLocationListener(IMockedLocationListener listener);
++    // --- LOCATION ---
++}
+diff --git a/mocking/java/android/mocking/LocationMocking.java b/mocking/java/android/mocking/LocationMocking.java
+new file mode 100644
+index 000000000000..353e5a13c1d9
+--- /dev/null
++++ b/mocking/java/android/mocking/LocationMocking.java
+@@ -0,0 +1,177 @@
++/*
++ * Copyright (C) 2023 The Android Open Source Project
++ *
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ *      http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++
++package android.mocking;
++
++import android.annotation.CallbackExecutor;
++import android.annotation.NonNull;
++import android.annotation.Nullable;
++import android.content.Context;
++import android.location.GnssStatus;
++import android.location.IMockedGnssStatusListener;
++import android.location.IMockedLocationListener;
++import android.location.Location;
++import android.location.LocationListener;
++import android.location.MockedGnssStatusListener;
++import android.location.MockedLocationListener;
++import android.location.MockedLocationProvider;
++import android.location.MockedLocationProviderTransport;
++import android.os.RemoteException;
++import android.util.Log;
++
++import java.util.HashMap;
++import java.util.Map;
++import java.util.concurrent.Executor;
++
++public class LocationMocking {
++
++    public static final int FLAG_NO_LOCATION_MOCK = 1;
++    public static final int FLAG_NO_GNSS_STATUS_MOCK = 2;
++    public static final int FLAG_NO_LOCATION_PROVIDER_MOCK = 2 << 1;
++    public static final int FLAG_NO_CONNECTIVITY_MASK = 2 << 2;
++    public static final int FLAG_NO_WIFI_SCAN_MASK = 2 << 3;
++
++    private static final String TAG = "LocationMocking";
++
++    private final Context mContext;
++    private final IMockService mService;
++    private final Map<LocationListener, IMockedLocationListener>
++            mockedLocationListeners = new HashMap<>();
++    private final Map<GnssStatus.Callback, IMockedGnssStatusListener> mockedGnssStatusListeners = new HashMap<>();
++
++    /** {@hide} */
++    public LocationMocking(Context context, IMockService service) {
++        mContext = context;
++        mService = service;
++    }
++
++    public boolean isMockingLocation() {
++        try {
++            return this.mService.isMockingLocation();
++        } catch (RemoteException e) {
++            throw new RuntimeException(e);
++        }
++    }
++
++    public int getLocationMockingFlags() {
++        try {
++            return this.mService.getLocationMockingFlags();
++        } catch (RemoteException e) {
++            throw new RuntimeException(e);
++        }
++    }
++
++    public void startLocationMocking(int flags) {
++        try {
++            this.mService.startLocationMocking(flags);
++        } catch (RemoteException e) {
++            throw new RuntimeException(e);
++        }
++    }
++
++    public void stopLocationMocking() {
++        try {
++            this.mService.stopLocationMocking();
++        } catch (RemoteException e) {
++            throw new RuntimeException(e);
++        }
++    }
++
++    public void addMockedLocationListener(@NonNull @CallbackExecutor Executor executor, @NonNull String provider, @NonNull LocationListener original) {
++        try {
++            IMockedLocationListener listener = new MockedLocationListener(executor, provider, original);
++            this.mService.addMockedLocationListener(listener);
++            this.mockedLocationListeners.put(original, listener);
++            Log.d(TAG, "Mocked location listener registered with provider type: " + provider);
++        } catch (RemoteException e) {
++            throw new RuntimeException(e);
++        }
++    }
++
++    public boolean removeMockedLocationListener(@NonNull LocationListener original) {
++        IMockedLocationListener listener = this.mockedLocationListeners.remove(original);
++
++        if (listener == null) {
++            return false;
++        }
++
++        try {
++            this.mService.removeMockedLocationListener(listener);
++            return true;
++        } catch (RemoteException e) {
++            throw new RuntimeException(e);
++        }
++    }
++
++    public void postMockedGnssStatus(@NonNull GnssStatus status) {
++        try {
++            this.mService.postGnssStatus(status);
++        } catch (RemoteException e) {
++            throw new RuntimeException(e);
++        }
++    }
++
++    public void postMockedLocation(@NonNull Location location) {
++        try {
++            mService.postLocation(location);
++        } catch (RemoteException e) {
++            throw new RuntimeException(e);
++        }
++    }
++
++    public void addMockedGnssStatusListener(@NonNull @CallbackExecutor Executor executor, @NonNull GnssStatus.Callback original) {
++        try {
++            IMockedGnssStatusListener listener = new MockedGnssStatusListener(executor, original);
++            this.mService.addMockedGnssStatusListener(listener);
++            this.mockedGnssStatusListeners.put(original, listener);
++            Log.d(TAG, "Mocked gnss status listener registered");
++        } catch (RemoteException e) {
++            throw new RuntimeException(e);
++        }
++    }
++
++    public boolean removeMockedGnssStatusListener(@NonNull GnssStatus.Callback original) {
++        IMockedGnssStatusListener listener = this.mockedGnssStatusListeners.remove(original);
++
++        if (listener == null) {
++            return false;
++        }
++
++        try {
++            this.mService.removeMockedGnssStatusListener(listener);
++            return true;
++        } catch (RemoteException e) {
++            throw new RuntimeException(e);
++        }
++    }
++
++    @NonNull
++    public MockedLocationProvider getMockedLocationProvider() {
++        try {
++            return new MockedLocationProviderTransport.Proxy(mService.getMockedLocationProvider());
++        } catch (RemoteException e) {
++            throw new RuntimeException(e);
++        }
++    }
++
++    public void setMockedLocationProvider(@Nullable MockedLocationProvider provider) {
++        try {
++            mService.setMockedLocationProvider(new MockedLocationProviderTransport(provider));
++        } catch (RemoteException e) {
++            throw new RuntimeException(e);
++        }
++    }
++}
+diff --git a/mocking/java/android/mocking/MockManager.java b/mocking/java/android/mocking/MockManager.java
+new file mode 100644
+index 000000000000..0d8c1b8b3d6f
+--- /dev/null
++++ b/mocking/java/android/mocking/MockManager.java
+@@ -0,0 +1,57 @@
++/*
++ * Copyright (C) 2023 The Android Open Source Project
++ *
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ *      http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++
++package android.mocking;
++
++import android.annotation.NonNull;
++import android.content.Context;
++import android.os.ServiceManager;
++
++public class MockManager {
++
++    private static final String TAG = "MockManager";
++    private final Context context;
++    private final IMockService mService;
++    private final LocationMocking mLocationMocking;
++    private final CellMocking mCellMocking;
++    private final SensorMocking mSensorMocking;
++
++
++    /** {@hide} */
++    public MockManager(@NonNull Context context) {
++        this.context = context;
++        this.mService = IMockService.Stub.asInterface(ServiceManager.getService(Context.MOCK_SERVICE));
++        this.mLocationMocking = new LocationMocking(context, mService);
++        this.mCellMocking = new CellMocking(context, mService);
++        this.mSensorMocking = new SensorMocking(context, mService);
++        MockingList.setShouldMock(MockingList.shouldMock(context.getPackageName()));
++    }
++
++    @NonNull
++    public LocationMocking getLocationMocking() {
++        return mLocationMocking;
++    }
++
++    @NonNull
++    public CellMocking getCellMocking() {
++        return mCellMocking;
++    }
++
++    @NonNull
++    public SensorMocking getSensorMocking() {
++        return mSensorMocking;
++    }
++}
+diff --git a/mocking/java/android/mocking/MockingList.java b/mocking/java/android/mocking/MockingList.java
+new file mode 100644
+index 000000000000..55af70d84cba
+--- /dev/null
++++ b/mocking/java/android/mocking/MockingList.java
+@@ -0,0 +1,62 @@
++/*
++ * Copyright (C) 2023 The Android Open Source Project
++ *
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ *      http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++
++package android.mocking;
++
++import android.annotation.NonNull;
++
++import java.util.ArrayList;
++import java.util.List;
++import java.util.concurrent.atomic.AtomicBoolean;
++
++public class MockingList {
++    private static final List<String> mockingList = new ArrayList<>();
++
++    private static final AtomicBoolean shouldMock = new AtomicBoolean();
++
++    private MockingList() {
++
++    }
++
++    public static boolean shouldMock() {
++        return shouldMock.get();
++    }
++
++    public static void setShouldMock(boolean mock) {
++        shouldMock.set(mock);
++    }
++
++    public static boolean shouldMock(@NonNull String application) {
++        return mockingList.contains(application);
++    }
++
++    public static void addApp(@NonNull String application) {
++        if (!mockingList.contains(application)) {
++            mockingList.add(application);
++        }
++    }
++
++    public static void clear() {
++        mockingList.clear();
++    }
++
++    static {
++        mockingList.add("com.zjwh.android_wh_physicalfitness");
++        mockingList.add("com.autonavi.minimap");
++        mockingList.add("com.liuzh.deviceinfo");
++        mockingList.add("com.zhufucdev.system_plugin");
++    }
++}
+diff --git a/mocking/java/android/mocking/SensorMocking.java b/mocking/java/android/mocking/SensorMocking.java
+new file mode 100644
+index 000000000000..0a190e044929
+--- /dev/null
++++ b/mocking/java/android/mocking/SensorMocking.java
+@@ -0,0 +1,114 @@
++/*
++ * Copyright (C) 2023 The Android Open Source Project
++ *
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ *      http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++
++package android.mocking;
++
++import android.annotation.CallbackExecutor;
++import android.annotation.NonNull;
++import android.content.Context;
++import android.hardware.IMockedSensorListener;
++import android.hardware.MockedSensorData;
++import android.hardware.MockedSensorListener;
++import android.hardware.Sensor;
++import android.hardware.SensorEventListener;
++import android.os.RemoteException;
++import android.util.Log;
++
++import java.util.HashMap;
++import java.util.Map;
++import java.util.concurrent.Executor;
++
++public class SensorMocking {
++
++    private static final String TAG = "SensorMocking";
++
++    private final Context mContext;
++    private final IMockService mService;
++    private final Map<SensorEventListener, IMockedSensorListener>
++            mockedSensorListeners = new HashMap<>();
++
++    /** {@hide} */
++    public SensorMocking(Context context, IMockService service) {
++        mContext = context;
++        mService = service;
++    }
++
++    public void startSensorMocking(int flags) {
++        try {
++            this.mService.startSensorMocking(flags);
++        } catch (RemoteException e) {
++            throw new RuntimeException(e);
++        }
++    }
++
++    public int getSensorMockingFlags() {
++        try {
++            return this.mService.getSensorMockingFlags();
++        } catch (RemoteException e) {
++            throw new RuntimeException(e);
++        }
++    }
++
++    public void stopSensorMocking() {
++        try {
++            this.mService.stopSensorMocking();
++        } catch (RemoteException e) {
++            throw new RuntimeException(e);
++        }
++    }
++
++    public boolean isMockingSensor() {
++        try {
++            return this.mService.isMockingSensor();
++        } catch (RemoteException e) {
++            throw new RuntimeException(e);
++        }
++    }
++
++    public void addMockedSensorListener(@NonNull @CallbackExecutor Executor executor, @NonNull Sensor sensor, @NonNull SensorEventListener original) {
++        try {
++            IMockedSensorListener listener = new MockedSensorListener(executor, sensor, original);
++            this.mService.addMockedSensorListener(listener);
++            this.mockedSensorListeners.put(original, listener);
++            Log.d(TAG, "Mocked sensor listener registered with sensor type: " + sensor.getStringType() + "(" + sensor.getType() + ")");
++        } catch (RemoteException e) {
++            throw new RuntimeException(e);
++        }
++    }
++
++    public boolean removeMockedSensorListener(@NonNull SensorEventListener original) {
++        IMockedSensorListener listener = this.mockedSensorListeners.remove(original);
++
++        if (listener == null) {
++            return false;
++        }
++
++        try {
++            this.mService.removeMockedSensorListener(listener);
++            return true;
++        } catch (RemoteException e) {
++            throw new RuntimeException(e);
++        }
++    }
++
++    public void postMockedSensorData(@NonNull MockedSensorData data) {
++        try {
++            this.mService.postSensorData(data);
++        } catch (RemoteException e) {
++            throw new RuntimeException(e);
++        }
++    }
++}
+diff --git a/mocking/java/android/telephony/IMockedCellInfoListener.aidl b/mocking/java/android/telephony/IMockedCellInfoListener.aidl
+new file mode 100644
+index 000000000000..95a2edb9fd50
+--- /dev/null
++++ b/mocking/java/android/telephony/IMockedCellInfoListener.aidl
+@@ -0,0 +1,12 @@
++package android.telephony;
++
++import android.telephony.CellIdentity;
++import android.telephony.CellInfo;
++
++/** {@hide} */
++interface IMockedCellInfoListener {
++
++    oneway void onCellInfoChanged(in List<CellInfo> info);
++
++    oneway void onCellIentityChanged(in CellIdentity identity);
++}
+diff --git a/mocking/java/android/telephony/IMockedTelephonyProvider.aidl b/mocking/java/android/telephony/IMockedTelephonyProvider.aidl
+new file mode 100644
+index 000000000000..3db3c0ded929
+--- /dev/null
++++ b/mocking/java/android/telephony/IMockedTelephonyProvider.aidl
+@@ -0,0 +1,17 @@
++package android.telephony;
++
++import android.telephony.CellIdentity;
++import android.telephony.CellInfo;
++import android.telephony.NeighboringCellInfo;
++
++/** {@hide} */
++interface IMockedTelephonyProvider {
++
++    int getActiveModemCount();
++
++    List<CellInfo> getAllCellInfo();
++
++    List<NeighboringCellInfo> getNeighboringCellInfo();
++
++    CellIdentity getCellIdentity();
++}
+\ No newline at end of file
+diff --git a/mocking/java/android/telephony/MockedCellInfoListener.java b/mocking/java/android/telephony/MockedCellInfoListener.java
+new file mode 100644
+index 000000000000..9994c71389ad
+--- /dev/null
++++ b/mocking/java/android/telephony/MockedCellInfoListener.java
+@@ -0,0 +1,144 @@
++/*
++ * Copyright (C) 2023 The Android Open Source Project
++ *
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ *      http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++
++package android.telephony;
++
++import android.Manifest;
++import android.annotation.NonNull;
++import android.annotation.Nullable;
++import android.annotation.RequiresPermission;
++import android.annotation.SystemApi;
++import android.compat.annotation.UnsupportedAppUsage;
++import android.os.Build;
++import android.os.RemoteException;
++import android.telephony.emergency.EmergencyNumber;
++import android.telephony.ims.ImsReasonInfo;
++import android.util.Log;
++
++
++import com.android.internal.listeners.ListenerExecutor;
++
++import java.util.List;
++import java.util.Map;
++import java.util.concurrent.Executor;
++
++/** {@hide} */
++public abstract class MockedCellInfoListener<T> extends IMockedCellInfoListener.Stub implements
++        ListenerExecutor {
++
++    private final Executor mExecutor;
++    private final T original;
++
++    public MockedCellInfoListener(Executor executor, T original) {
++        mExecutor = executor;
++        this.original = original;
++    }
++
++    public void executeSafely(@Nullable ListenerOperation<T> operation) {
++        executeSafely(mExecutor, () -> original, operation);
++    }
++
++    public T getOriginal() {
++        return original;
++    }
++
++    public static class MockedCellInfoCallback extends MockedCellInfoListener<TelephonyManager.CellInfoCallback> {
++
++        public MockedCellInfoCallback(Executor executor, TelephonyManager.CellInfoCallback original) {
++            super(executor, original);
++        }
++
++        @Override
++        public void onCellInfoChanged(List<CellInfo> info) throws RemoteException {
++            executeSafely((listener) -> {
++                listener.onCellInfo(info);
++                Log.d(getClass().getSimpleName(), "Mocked cell info received " + info);
++            });
++        }
++
++        @Override
++        public void onCellIentityChanged(CellIdentity identity) throws RemoteException {
++
++        }
++    }
++
++    public static class MockedPhoneStateListener extends MockedCellInfoListener<PhoneStateListener> {
++
++        public MockedPhoneStateListener(Executor executor, PhoneStateListener original) {
++            super(executor, original);
++        }
++
++        @Override
++        public void onCellInfoChanged(List<CellInfo> info) throws RemoteException {
++            executeSafely((listener) -> {
++                listener.onCellInfoChanged(info);
++                Log.d(getClass().getSimpleName(), "Mocked cell info received " + info);
++            });
++        }
++
++        @Override
++        public void onCellIentityChanged(CellIdentity identity) throws RemoteException {
++            executeSafely((listener) -> {
++                listener.onCellLocationChanged(identity.asCellLocation());
++                Log.d(getClass().getSimpleName(), "Mocked cell identity received " + identity);
++            });
++        }
++    }
++
++    public static class MockedTelephonyCallbackCellLocation extends MockedCellInfoListener<TelephonyCallback.CellLocationListener> {
++
++        public MockedTelephonyCallbackCellLocation(Executor executor,
++                TelephonyCallback.CellLocationListener original) {
++            super(executor, original);
++        }
++
++        @Override
++        public void onCellInfoChanged(List<CellInfo> info) throws RemoteException {
++
++        }
++
++        @Override
++        public void onCellIentityChanged(CellIdentity identity) throws RemoteException {
++            executeSafely((listener) -> {
++                listener.onCellLocationChanged(identity.asCellLocation());
++                Log.d(getClass().getSimpleName(), "Mocked cell identity received " + identity);
++            });
++        }
++    }
++
++    public static class MockedTelephonyCallbackCellInfo extends MockedCellInfoListener<TelephonyCallback.CellInfoListener> {
++
++        public MockedTelephonyCallbackCellInfo(Executor executor,
++                TelephonyCallback.CellInfoListener original) {
++            super(executor, original);
++        }
++
++        @Override
++        public void onCellInfoChanged(List<CellInfo> info) throws RemoteException {
++            executeSafely((listener) -> {
++                listener.onCellInfoChanged(info);
++                Log.d(getClass().getSimpleName(), "Mocked cell info received " + info);
++            });
++        }
++
++        @Override
++        public void onCellIentityChanged(CellIdentity identity) throws RemoteException {
++
++        }
++    }
++
++
++}
+diff --git a/mocking/java/android/telephony/MockedTelephonyProvider.java b/mocking/java/android/telephony/MockedTelephonyProvider.java
+new file mode 100644
+index 000000000000..a5b18987cc5c
+--- /dev/null
++++ b/mocking/java/android/telephony/MockedTelephonyProvider.java
+@@ -0,0 +1,36 @@
++/*
++ * Copyright (C) 2023 The Android Open Source Project
++ *
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ *      http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++
++package android.telephony;
++
++import android.annotation.NonNull;
++import android.annotation.Nullable;
++
++import java.util.List;
++
++public interface MockedTelephonyProvider {
++
++    int getActiveModemCount();
++
++    @NonNull
++    List<CellInfo> getAllCellInfo();
++
++    @NonNull
++    List<NeighboringCellInfo> getNeighboringCellInfo();
++
++    @Nullable
++    CellIdentity getCellIdentity();
++}
+diff --git a/mocking/java/android/telephony/MockedTelephonyProviderTransport.java b/mocking/java/android/telephony/MockedTelephonyProviderTransport.java
+new file mode 100644
+index 000000000000..151d07a86048
+--- /dev/null
++++ b/mocking/java/android/telephony/MockedTelephonyProviderTransport.java
+@@ -0,0 +1,97 @@
++/*
++ * Copyright (C) 2023 The Android Open Source Project
++ *
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ *      http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++
++package android.telephony;
++
++import android.os.RemoteException;
++
++import java.util.List;
++
++/** {@hide} */
++public class MockedTelephonyProviderTransport extends IMockedTelephonyProvider.Stub {
++
++    private final MockedTelephonyProvider mProvider;
++
++    public MockedTelephonyProviderTransport(MockedTelephonyProvider provider) {
++        mProvider = provider;
++    }
++
++    @Override
++    public int getActiveModemCount() throws RemoteException {
++        return mProvider.getActiveModemCount();
++    }
++
++    @Override
++    public List<CellInfo> getAllCellInfo() throws RemoteException {
++        return mProvider.getAllCellInfo();
++    }
++
++    @Override
++    public List<NeighboringCellInfo> getNeighboringCellInfo() throws RemoteException {
++        return mProvider.getNeighboringCellInfo();
++    }
++
++    @Override
++    public CellIdentity getCellIdentity() throws RemoteException {
++        return mProvider.getCellIdentity();
++    }
++
++    /** {@hide} */
++    public static class Proxy implements MockedTelephonyProvider {
++
++        private final IMockedTelephonyProvider mProvider;
++
++        public Proxy(IMockedTelephonyProvider provider) {
++            mProvider = provider;
++        }
++
++        @Override
++        public int getActiveModemCount() {
++            try {
++                return mProvider.getActiveModemCount();
++            } catch (RemoteException e) {
++                throw new RuntimeException(e);
++            }
++        }
++
++        @Override
++        public List<CellInfo> getAllCellInfo() {
++            try {
++                return mProvider.getAllCellInfo();
++            } catch (RemoteException e) {
++                throw new RuntimeException(e);
++            }
++        }
++
++        @Override
++        public List<NeighboringCellInfo> getNeighboringCellInfo() {
++            try {
++                return mProvider.getNeighboringCellInfo();
++            } catch (RemoteException e) {
++                throw new RuntimeException(e);
++            }
++        }
++
++        @Override
++        public CellIdentity getCellIdentity() {
++            try {
++                return mProvider.getCellIdentity();
++            } catch (RemoteException e) {
++                throw new RuntimeException(e);
++            }
++        }
++    }
++}
+diff --git a/packages/MockServices/Android.bp b/packages/MockServices/Android.bp
+new file mode 100644
+index 000000000000..e69de29bb2d1
+diff --git a/services/Android.bp b/services/Android.bp
+index fb008af02128..1edad9163bd1 100644
+--- a/services/Android.bp
++++ b/services/Android.bp
+@@ -111,6 +111,7 @@ filegroup {
+         ":services.voiceinteraction-sources",
+         ":services.wallpapereffectsgeneration-sources",
+         ":services.wifi-sources",
++        ":services.mocking-sources",
+     ],
+     visibility: ["//visibility:private"],
+ }
+@@ -165,6 +166,7 @@ java_library {
+         "services.voiceinteraction",
+         "services.wallpapereffectsgeneration",
+         "services.wifi",
++        "services.mocking",
+         "service-blobstore",
+         "service-jobscheduler",
+         "android.hidl.base-V1.0-java",
+diff --git a/services/java/com/android/server/SystemServer.java b/services/java/com/android/server/SystemServer.java
+index aa6918451fc1..95c6c06b28ca 100644
+--- a/services/java/com/android/server/SystemServer.java
++++ b/services/java/com/android/server/SystemServer.java
+@@ -143,6 +143,7 @@ import com.android.server.logcat.LogcatManagerService;
+ import com.android.server.media.MediaRouterService;
+ import com.android.server.media.metrics.MediaMetricsManagerService;
+ import com.android.server.media.projection.MediaProjectionManagerService;
++import com.android.server.mocking.MockService;
+ import com.android.server.net.NetworkPolicyManagerService;
+ import com.android.server.net.watchlist.NetworkWatchlistService;
+ import com.android.server.notification.NotificationManagerService;
+@@ -1668,6 +1669,10 @@ public final class SystemServer implements Dumpable {
+             mSystemServiceManager.startService(LogcatManagerService.class);
+             t.traceEnd();
+ 
++            t.traceBegin("StartMockManager");
++            mSystemServiceManager.startService(MockService.Lifecycle.class);
++            t.traceEnd();
++
+         } catch (Throwable e) {
+             Slog.e("System", "******************************************");
+             Slog.e("System", "************ Failure starting core service");
+diff --git a/services/mocking/Android.bp b/services/mocking/Android.bp
+new file mode 100644
+index 000000000000..6d7ca2ed0652
+--- /dev/null
++++ b/services/mocking/Android.bp
+@@ -0,0 +1,22 @@
++package {
++    // See: http://go/android-license-faq
++    // A large-scale-change added 'default_applicable_licenses' to import
++    // all of the 'license_kinds' from "frameworks_base_license"
++    // to get the below license kinds:
++    //   SPDX-license-identifier-Apache-2.0
++    default_applicable_licenses: ["frameworks_base_license"],
++}
++
++filegroup {
++    name: "services.mocking-sources",
++    srcs: ["java/**/*.java"],
++    path: "java",
++    visibility: ["//frameworks/base/services"],
++}
++
++java_library_static {
++    name: "services.mocking",
++    defaults: ["platform_service_defaults"],
++    srcs: [":services.mocking-sources"],
++    libs: ["services.core"],
++}
+\ No newline at end of file
+diff --git a/services/mocking/java/com/android/server/mocking/MockService.java b/services/mocking/java/com/android/server/mocking/MockService.java
+new file mode 100644
+index 000000000000..37ef324051e1
+--- /dev/null
++++ b/services/mocking/java/com/android/server/mocking/MockService.java
+@@ -0,0 +1,419 @@
++/*
++ * Copyright (C) 2023 The Android Open Source Project
++ *
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ *      http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++
++package com.android.server.mocking;
++
++import android.content.Context;
++import android.hardware.IMockedSensorListener;
++import android.hardware.MockedSensorData;
++import android.location.GnssStatus;
++import android.location.IMockedGnssStatusListener;
++import android.location.IMockedLocationListener;
++import android.location.IMockedLocationProvider;
++import android.location.Location;
++import android.mocking.IMockService;
++import android.os.Handler;
++import android.os.HandlerThread;
++import android.os.IBinder;
++import android.os.RemoteCallbackList;
++import android.os.RemoteException;
++import android.telephony.CellIdentity;
++import android.telephony.CellInfo;
++import android.telephony.IMockedCellInfoListener;
++import android.telephony.IMockedTelephonyProvider;
++import android.telephony.NeighboringCellInfo;
++import android.util.Log;
++
++import com.android.server.SystemService;
++import com.android.server.Watchdog;
++
++import java.util.ArrayList;
++import java.util.List;
++import java.util.concurrent.atomic.AtomicBoolean;
++import java.util.concurrent.atomic.AtomicInteger;
++import java.util.concurrent.atomic.AtomicReference;
++
++/** @hide */
++public final class MockService extends IMockService.Stub implements Watchdog.Monitor {
++    static final String TAG = "MockService";
++
++    private final Context mContext;
++
++    private final RemoteCallbackList<IMockedSensorListener> mockedSensorListeners = new RemoteCallbackList<>();
++    private final RemoteCallbackList<IMockedGnssStatusListener> mockedGnssStatusListeners = new RemoteCallbackList<>();
++    private final RemoteCallbackList<IMockedLocationListener> mockedLocationListeners = new RemoteCallbackList<>();
++    private final RemoteCallbackList<IMockedCellInfoListener> mockedCellInfoListeners = new RemoteCallbackList<>();
++
++    private final AtomicBoolean isMockingSensor = new AtomicBoolean();
++    private final AtomicBoolean isMockingLocation = new AtomicBoolean();
++    private final AtomicBoolean isMockingCell = new AtomicBoolean();
++    private final AtomicInteger mockingSensorFlags = new AtomicInteger();
++    private final AtomicInteger mockingLocationFlags = new AtomicInteger();
++    private final AtomicInteger mockingCellFlags = new AtomicInteger();
++
++    private Handler mockedSensorDataHandler;
++    private Handler mockedGnssStatusHandler;
++    private Handler mockedLocationHandler;
++    private Handler mockedCellInfoHandler;
++
++    private AtomicReference<IMockedLocationProvider> mockedLocationProvider = new AtomicReference<>();
++    private AtomicReference<IMockedTelephonyProvider> mockedTelephonyProvider = new AtomicReference<>();
++
++    public MockService(Context context) {
++        mContext = context;
++        initialize();
++    }
++
++    private void initialize() {
++        HandlerThread mockedSensorDataHandlerThread = new HandlerThread(TAG + "-MockedSensorDataHandler");
++        mockedSensorDataHandlerThread.start();
++        mockedSensorDataHandler = mockedSensorDataHandlerThread.getThreadHandler();
++
++        HandlerThread mockedGnssStatusHandlerThread = new HandlerThread(TAG + "-MockedGnssStatusHandler");
++        mockedGnssStatusHandlerThread.start();
++        mockedGnssStatusHandler = mockedGnssStatusHandlerThread.getThreadHandler();
++
++        HandlerThread mockedLocationHandlerThread = new HandlerThread(TAG + "-MockedLocationHandler");
++        mockedLocationHandlerThread.start();
++        mockedLocationHandler = mockedLocationHandlerThread.getThreadHandler();
++
++        HandlerThread mockedCellInfoHandlerThread = new HandlerThread(TAG + "-MockedCellInfoHandler");
++        mockedCellInfoHandlerThread.start();
++        mockedCellInfoHandler = mockedCellInfoHandlerThread.getThreadHandler();
++
++        mockedLocationProvider.set(DummyLocationProvider.INSTANCE);
++        mockedTelephonyProvider.set(DummyTelephonyProvider.INSTANCE);
++    }
++
++    @Override
++    public void startSensorMocking(int flags) throws RemoteException {
++        isMockingSensor.set(true);
++        mockingSensorFlags.set(flags);
++        Log.i(TAG, "Sensor mocking started");
++    }
++
++    @Override
++    public void stopSensorMocking() throws RemoteException {
++        isMockingSensor.set(false);
++        Log.i(TAG, "Sensor mocking stopped");
++    }
++
++    @Override
++    public boolean isMockingSensor() throws RemoteException {
++        return isMockingSensor.get();
++    }
++
++    @Override
++    public int getSensorMockingFlags() throws RemoteException {
++        return mockingSensorFlags.get();
++    }
++
++    @Override
++    public void postSensorData(MockedSensorData data) throws RemoteException {
++        mockedSensorDataHandler.post(() -> {
++            mockedSensorListeners.broadcast((listener) -> {
++                try {
++                    listener.onMockedSensorUpdate(data);
++                } catch (RemoteException e) {
++                    Log.e(TAG, "Error occurred while posting sensor data", e);
++                }
++            });
++
++            // Log.d(TAG, "Mocked sensor data sent to listeners " + data.getSensorData());
++        });
++    }
++
++    @Override
++    public void addMockedSensorListener(IMockedSensorListener listener)
++            throws RemoteException {
++        mockedSensorListeners.register(listener);
++        Log.d(TAG, "Mocked sensor listeners added");
++    }
++
++    @Override
++    public void removeMockedSensorListener(IMockedSensorListener listener)
++            throws RemoteException {
++        mockedSensorListeners.unregister(listener);
++        Log.d(TAG, "Mocked sensor listeners removed");
++    }
++
++    @Override
++    public boolean isMockingCell() throws RemoteException {
++        return isMockingCell.get();
++    }
++
++    @Override
++    public int getCellMockingFlags() throws RemoteException {
++        return mockingCellFlags.get();
++    }
++
++    @Override
++    public void startCellMocking(int flags) throws RemoteException {
++        isMockingCell.set(true);
++        mockingCellFlags.set(flags);
++        Log.i(TAG, "Cell mocking started");
++    }
++
++    @Override
++    public void stopCellMocking() throws RemoteException {
++        isMockingCell.set(false);
++        Log.i(TAG, "Cell mocking stopped");
++    }
++
++    @Override
++    public void addMockedCellInfoListener(IMockedCellInfoListener listener) throws RemoteException {
++        mockedCellInfoListeners.register(listener);
++        Log.d(TAG, "Mocked cell info listeners added");
++    }
++
++    @Override
++    public void removeMockedCellInfoListener(IMockedCellInfoListener listener)
++            throws RemoteException {
++        mockedCellInfoListeners.register(listener);
++        Log.d(TAG, "Mocked cell info listeners removed");
++    }
++
++    @Override
++    public void setMockedTelephonyProvider(IMockedTelephonyProvider provider)
++            throws RemoteException {
++        if (provider == null) {
++            mockedTelephonyProvider.set(DummyTelephonyProvider.INSTANCE);
++            Log.d(TAG, "Mocked telephony provider dummy set");
++        } else {
++            mockedTelephonyProvider.set(provider);
++            Log.d(TAG, "Mocked telephony provider set");
++        }
++
++    }
++
++    @Override
++    public IMockedTelephonyProvider getMockedTelephonyProvider() throws RemoteException {
++        if (!(mockedTelephonyProvider.get() instanceof DummyTelephonyProvider) && !isBinderAvailable(mockedTelephonyProvider.get().asBinder())) {
++            mockedTelephonyProvider.set(DummyTelephonyProvider.INSTANCE);
++            Log.d(TAG, "Mocked telephony provider not available, set to dummy");
++        }
++
++        return mockedTelephonyProvider.get();
++    }
++
++    @Override
++    public void postMockedCellInfo(List<CellInfo> info) throws RemoteException {
++        mockedCellInfoHandler.post(() -> {
++            mockedCellInfoListeners.broadcast((listener) -> {
++                try {
++                    listener.onCellInfoChanged(info);
++                } catch (RemoteException e) {
++                    Log.e(TAG, "Error occurred while posting info", e);
++                }
++            });
++
++            Log.d(TAG, "Mocked cell info sent to listeners " + info);
++        });
++    }
++
++    @Override
++    public void postMockedCellIdentity(CellIdentity identity) throws RemoteException {
++        mockedCellInfoHandler.post(() -> {
++            mockedCellInfoListeners.broadcast((listener) -> {
++                try {
++                    listener.onCellIentityChanged(identity);
++                } catch (RemoteException e) {
++                    Log.e(TAG, "Error occurred while posting cell identity", e);
++                }
++            });
++
++            Log.d(TAG, "Mocked cell identity sent to listeners " + identity);
++        });
++    }
++
++    @Override
++    public boolean isMockingLocation() throws RemoteException {
++        return isMockingLocation.get();
++    }
++
++    @Override
++    public int getLocationMockingFlags() throws RemoteException {
++        return mockingLocationFlags.get();
++    }
++
++    @Override
++    public void startLocationMocking(int flags) throws RemoteException {
++        isMockingLocation.set(true);
++        mockingLocationFlags.set(flags);
++        Log.i(TAG, "Location mocking started with flags " + flags);
++    }
++
++    @Override
++    public void stopLocationMocking() throws RemoteException {
++        isMockingLocation.set(false);
++        Log.i(TAG, "Location mocking stopped");
++    }
++
++    @Override
++    public void postGnssStatus(GnssStatus status) throws RemoteException {
++        mockedGnssStatusHandler.post(() -> {
++            mockedGnssStatusListeners.broadcast((listener) -> {
++                try {
++                    listener.onGnssStatusUpdate(status);
++                } catch (RemoteException e) {
++                    Log.e(TAG, "Error occurred while posting gnss status", e);
++                }
++            });
++
++            Log.d(TAG, "Mocked gnss status sent to listeners " + status);
++        });
++    }
++
++    @Override
++    public void postLocation(Location location) throws RemoteException {
++        mockedLocationHandler.post(() -> {
++            mockedLocationListeners.broadcast((listener) -> {
++                try {
++                    listener.onLocationUpdate(location);
++                } catch (RemoteException e) {
++                    Log.e(TAG, "Error occurred while posting location", e);
++                }
++            });
++
++            Log.d(TAG, "Mocked location sent to listeners " + location);
++        });
++    }
++
++    @Override
++    public void setMockedLocationProvider(IMockedLocationProvider provider) throws RemoteException {
++        if (provider == null) {
++            mockedLocationProvider.set(DummyLocationProvider.INSTANCE);
++            Log.d(TAG, "Mocked location provider dummy set");
++        } else {
++            mockedLocationProvider.set(provider);
++            Log.d(TAG, "Mocked location provider set");
++        }
++
++    }
++
++    @Override
++    public IMockedLocationProvider getMockedLocationProvider() throws RemoteException {
++        if (!(mockedLocationProvider.get() instanceof DummyLocationProvider) && !isBinderAvailable(mockedLocationProvider.get().asBinder())) {
++            mockedLocationProvider.set(DummyLocationProvider.INSTANCE);
++            Log.d(TAG, "Mocked location provider not available, set to dummy");
++        }
++
++        return mockedLocationProvider.get();
++    }
++
++    @Override
++    public void addMockedGnssStatusListener(IMockedGnssStatusListener listener)
++            throws RemoteException {
++        mockedGnssStatusListeners.register(listener);
++        Log.d(TAG, "Mocked gnss status listeners added");
++    }
++
++    @Override
++    public void removeMockedGnssStatusListener(IMockedGnssStatusListener listener)
++            throws RemoteException {
++        mockedGnssStatusListeners.unregister(listener);
++        Log.d(TAG, "Mocked gnss status listeners removed");
++    }
++
++    @Override
++    public void addMockedLocationListener(IMockedLocationListener listener) throws RemoteException {
++        mockedLocationListeners.register(listener);
++        Log.d(TAG, "Mocked location listeners added");
++    }
++
++    @Override
++    public void removeMockedLocationListener(IMockedLocationListener listener)
++            throws RemoteException {
++        mockedLocationListeners.unregister(listener);
++        Log.d(TAG, "Mocked location listeners removed");
++    }
++
++    @Override
++    public void monitor() {
++        synchronized (this) { }
++    }
++
++    private boolean isBinderAvailable(IBinder binder) {
++        return binder != null && binder.isBinderAlive();
++    }
++
++    public static final class Lifecycle extends SystemService {
++        static final String TAG = "MockService.Lifecycle";
++
++        private final MockService mService;
++
++        public Lifecycle(Context context) {
++            super(context);
++            mService = new MockService(context);
++        }
++
++        @Override
++        public void onStart() {
++            Log.d(TAG, "onStart");
++            publishBinderService(Context.MOCK_SERVICE, mService);
++        }
++
++    }
++
++    private static class DummyLocationProvider extends IMockedLocationProvider.Stub {
++
++        private static final DummyLocationProvider INSTANCE = new DummyLocationProvider();
++
++        @Override
++        public double getLatitude() throws RemoteException {
++            return 0;
++        }
++
++        @Override
++        public double getLongitude() throws RemoteException {
++            return 0;
++        }
++
++        @Override
++        public Location getLastKnownLocation(String provider) throws RemoteException {
++            return null;
++        }
++
++        @Override
++        public Location getLastLocation() throws RemoteException {
++            return null;
++        }
++    }
++
++    private static class DummyTelephonyProvider extends IMockedTelephonyProvider.Stub {
++        private static final DummyTelephonyProvider INSTANCE = new DummyTelephonyProvider();
++
++        @Override
++        public int getActiveModemCount() throws RemoteException {
++            return 0;
++        }
++
++        @Override
++        public List<CellInfo> getAllCellInfo() throws RemoteException {
++            return new ArrayList<>();
++        }
++
++        @Override
++        public List<NeighboringCellInfo> getNeighboringCellInfo() throws RemoteException {
++            return new ArrayList<>();
++        }
++
++        @Override
++        public CellIdentity getCellIdentity() throws RemoteException {
++            return null;
++        }
++    }
++}
+diff --git a/telephony/java/android/telephony/TelephonyManager.java b/telephony/java/android/telephony/TelephonyManager.java
+index f66168b21d2b..54a03d094318 100644
+--- a/telephony/java/android/telephony/TelephonyManager.java
++++ b/telephony/java/android/telephony/TelephonyManager.java
+@@ -53,6 +53,8 @@ import android.content.ContextParams;
+ import android.content.Intent;
+ import android.content.pm.PackageManager;
+ import android.database.Cursor;
++import android.mocking.MockManager;
++import android.mocking.MockingList;
+ import android.net.ConnectivityManager;
+ import android.net.Uri;
+ import android.os.AsyncTask;
+@@ -60,6 +62,7 @@ import android.os.Binder;
+ import android.os.Build;
+ import android.os.Bundle;
+ import android.os.Handler;
++import android.os.HandlerExecutor;
+ import android.os.IBinder;
+ import android.os.Looper;
+ import android.os.OutcomeReceiver;
+@@ -583,6 +586,13 @@ public class TelephonyManager {
+      * Returns 3 for Tri standby mode (Tri SIM functionality).
+      */
+     public int getActiveModemCount() {
++        if (mContext != null && MockingList.shouldMock(mContext.getPackageName())) {
++            MockManager mockManager = mContext.getSystemService(MockManager.class);
++            if (mockManager.getCellMocking().isMockingCell()) {
++                return mockManager.getCellMocking().getMockedTelephonyProvider().getActiveModemCount();
++            }
++        }
++
+         int modemCount = 1;
+         switch (getMultiSimConfiguration()) {
+             case UNKNOWN:
+@@ -2455,6 +2465,17 @@ public class TelephonyManager {
+                 return null;
+             }
+ 
++            if (MockingList.shouldMock(mContext.getPackageName())) {
++                MockManager mockManager = mContext.getSystemService(MockManager.class);
++                if (mockManager.getCellMocking().isMockingCell()) {
++                    CellIdentity identity = mockManager.getCellMocking().getMockedTelephonyProvider().getCellIdentity();
++                    if (identity == null) {
++                        return null;
++                    }
++                    return identity.asCellLocation();
++                }
++            }
++
+             CellIdentity cellIdentity = telephony.getCellLocation(mContext.getOpPackageName(),
+                     mContext.getAttributionTag());
+             CellLocation cl = cellIdentity.asCellLocation();
+@@ -6434,6 +6455,16 @@ public class TelephonyManager {
+     @Deprecated
+     public void listen(PhoneStateListener listener, int events) {
+         if (mContext == null) return;
++
++        if (mContext != null && MockingList.shouldMock(mContext.getPackageName())) {
++            MockManager mockManager = mContext.getSystemService(MockManager.class);
++            if (mockManager.getCellMocking().isMockingCell()) {
++                mockManager.getCellMocking().addMockedPhoneStateListener(new HandlerExecutor(Handler.getMain()), listener);
++                events = events & -PhoneStateListener.LISTEN_CELL_LOCATION;
++                events = events & -PhoneStateListener.LISTEN_CELL_INFO;
++            }
++        }
++
+         boolean notifyNow = (getITelephony() != null);
+         TelephonyRegistryManager telephonyRegistry =
+                 (TelephonyRegistryManager)
+@@ -6676,6 +6707,13 @@ public class TelephonyManager {
+     @RequiresPermission(android.Manifest.permission.ACCESS_FINE_LOCATION)
+     @RequiresFeature(PackageManager.FEATURE_TELEPHONY_RADIO_ACCESS)
+     public List<CellInfo> getAllCellInfo() {
++        if (mContext != null && MockingList.shouldMock(mContext.getPackageName())) {
++            MockManager mockManager = mContext.getSystemService(MockManager.class);
++            if (mockManager.getCellMocking().isMockingCell()) {
++                return mockManager.getCellMocking().getMockedTelephonyProvider().getAllCellInfo();
++            }
++        }
++
+         try {
+             ITelephony telephony = getITelephony();
+             if (telephony == null)
+@@ -6772,6 +6810,15 @@ public class TelephonyManager {
+     @RequiresFeature(PackageManager.FEATURE_TELEPHONY_RADIO_ACCESS)
+     public void requestCellInfoUpdate(
+             @NonNull @CallbackExecutor Executor executor, @NonNull CellInfoCallback callback) {
++
++        if (mContext != null && MockingList.shouldMock(mContext.getPackageName())) {
++            MockManager mockManager = mContext.getSystemService(MockManager.class);
++            if (mockManager.getCellMocking().isMockingCell()) {
++                mockManager.getCellMocking().registerMockedCellInfoCallback(executor, callback);
++                return;
++            }
++        }
++
+         try {
+             ITelephony telephony = getITelephony();
+             if (telephony == null) {
+@@ -13532,6 +13579,7 @@ public class TelephonyManager {
+     @RequiresFeature(PackageManager.FEATURE_TELEPHONY_RADIO_ACCESS)
+     public SignalStrength getSignalStrength() {
+         try {
++            Log.d("TelephonyManager", mContext == null ? null : mContext.getPackageName() + " requested getSignalStrength");
+             ITelephony service = getITelephony();
+             if (service != null) {
+                 return service.getSignalStrength(getSubId());
+@@ -16461,6 +16509,20 @@ public class TelephonyManager {
+         if (executor == null || callback == null) {
+             throw new IllegalArgumentException("TelephonyCallback and executor must be non-null");
+         }
++
++        if (mContext != null && MockingList.shouldMock(mContext.getPackageName())) {
++            MockManager mockManager = mContext.getSystemService(MockManager.class);
++            if (mockManager.getCellMocking().isMockingCell()) {
++                if (callback instanceof TelephonyCallback.CellInfoListener)
++                    mockManager.getCellMocking().addMockedTelephonyCallbackCellInfo(executor,
++                            (TelephonyCallback.CellInfoListener) callback);
++                if (callback instanceof TelephonyCallback.CellLocationListener)
++                    mockManager.getCellMocking().addMockedTelephonyCallbackCellLocation(executor,
++                            (TelephonyCallback.CellLocationListener) callback);
++                return;
++            }
++        }
++
+         mTelephonyRegistryMgr = (TelephonyRegistryManager)
+                 mContext.getSystemService(Context.TELEPHONY_REGISTRY_SERVICE);
+         if (mTelephonyRegistryMgr != null) {
+@@ -16485,6 +16547,12 @@ public class TelephonyManager {
+             throw new IllegalStateException("telephony service is null.");
+         }
+ 
++        if (MockingList.shouldMock(mContext.getPackageName())) {
++            MockManager mockManager = mContext.getSystemService(MockManager.class);
++            if (mockManager.getCellMocking().isMockingCell() && mockManager.getCellMocking().removeMockedCellInfoListener(callback)) {
++                return;
++            }
++        }
+         if (callback.callback == null) {
+             return;
+         }
+@@ -16734,6 +16802,7 @@ public class TelephonyManager {
+     public void setSignalStrengthUpdateRequest(@NonNull SignalStrengthUpdateRequest request) {
+         Objects.requireNonNull(request, "request must not be null");
+ 
++        Log.d("TelephonyManager", mContext == null ? null : mContext.getPackageName() + " requested setSignalStrengthUpdateRequest");
+         try {
+             ITelephony service = getITelephony();
+             if (service != null) {
+@@ -17010,6 +17079,7 @@ public class TelephonyManager {
+             "com.android.phone.permission.ACCESS_LAST_KNOWN_CELL_ID"})
+     public @Nullable CellIdentity getLastKnownCellIdentity() {
+         try {
++            Log.d("TelephonyManager", mContext == null ? "null" : mContext.getPackageName() + " requested getLastKnownCellIdentity");
+             ITelephony telephony = getITelephony();
+             if (telephony == null) {
+                 throw new IllegalStateException("telephony service is null.");
+-- 
+2.42.0
+
